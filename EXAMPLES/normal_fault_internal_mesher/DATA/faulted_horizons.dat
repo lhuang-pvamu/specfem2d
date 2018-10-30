@@ -1,0 +1,75 @@
+# case -- Three horizons with normal fault
+#
+#      Implemented using internal mesher
+#
+# number of interfaces
+ 5
+#
+# for each interface below, number of points and then x,z for each point
+#
+# interface 1 (bottom of the mesh)
+ 2
+ 0 0
+ 5000 0
+# interface 2
+ 13
+    0  900
+ 1000 1000
+ 2000  800
+ 2300  710
+ 2400  700
+ 2450  780
+ 2550  950
+ 2650 1200
+ 2700 1300
+ 2800 1290
+ 3000 1200
+ 4000 1050
+ 5000 1000
+# interface 3
+ 13
+    0 2000
+ 1000 2000
+ 2000 1800
+ 2500 1610
+ 2650 1600
+ 2700 1700
+ 2800 1850
+ 2900 2100
+ 2950 2200
+ 3050 2180
+ 3500 2050
+ 4000 1900
+ 5000 1800
+# interface 4 
+ 13
+    0 2300
+ 1000 2300
+ 2000 2100
+ 2650 1900
+ 2750 1920
+ 2800 2000
+ 2900 2250
+ 3000 2400
+ 3050 2500
+ 3150 2490
+ 3500 2400
+ 4000 2250
+ 5000 2100
+
+#
+# interface 5 (free surface)
+ 2
+    0 3500
+ 5000 3500
+#
+# for each layer, number of spectral elements in the vertical direction
+#
+# layer 1 (bottom layer)
+ 20
+# layer 2
+ 20
+# layer 3
+ 10
+# layer 4 (top layer)
+ 20

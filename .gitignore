@@ -65,3 +65,11 @@ obj/*
 .*swp
 .*swo
 *~
+*.bin
+STATIONS
+EXAMPLES/normal_fault_internal_mesher/OUTPUT_FILES
+DX_all_elements_with_negative_jacobian_in_red.dx
+DX_first_element_with_negative_jacobian.dx
+xmeshfem2D
+xspecfem2D
+EXAMPLES/simple_topography_and_also_a_simple_fluid_layer/OUTPUT_FILES
