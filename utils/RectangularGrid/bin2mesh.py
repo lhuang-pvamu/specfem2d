@@ -167,7 +167,7 @@ def grid_mesher(filename):
 
     cellNodesFile = "mesh_element_node_indices"
     fdCellNodes = open(cellNodesFile,'w')
-    print >>fdCellNodes, mdl.nCells
+    print >>fdCellNodes, mdl.nCellsExt
     print "File:",cellNodesFile,"will have a line with 4 indices for each of",\
     mdl.nCellsExt,"mesh elements."
 
