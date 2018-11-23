@@ -732,8 +732,9 @@
   integer  :: match
   integer  :: nb_elmnts_abs
   integer  :: i
-  integer  :: temp
+  integer  :: temp, elmatch, ixmatch       ! TEC
   integer  :: iedge, inode1, inode2
+  logical  :: dbgPrt
 
   allocate(abs_surface_char(4,nelemabs))
   allocate(abs_surface_merge(nelemabs))
@@ -745,6 +746,10 @@
 
   nedge_bound = nelemabs
   nb_elmnts_abs = 0
+
+  print *, "Matching each absorbing edge to its element in the absorbing boundary..."
+  dbgPrt = .false.
+  print *, "nedge_bound=",nedge_bound," nb_elmnts_abs=",nb_elmnts_abs
 
   do num_edge = 1, nedge_bound
 
@@ -765,60 +770,76 @@
 !! DK DK Sept 2012    endif
 
     abs_surface_merge(match) = abs_surface(1,num_edge)
+    elmatch = abs_surface_merge(match)
+    ixmatch = ngnod*(elmatch-1)      ! <<< TEC fix
 !! DK DK Sept 2012 added the absorbing interface type for Stacey
     abs_surface_type(match) = abs_surface(5,num_edge)
 
-    if ((abs_surface(3,num_edge) == elmnts(ngnod*abs_surface_merge(match)+0) .and. &
-          abs_surface(4,num_edge) == elmnts(ngnod*abs_surface_merge(match)+1))) then
+    if ((abs_surface(3,num_edge) == elmnts(ixmatch+0) .and. &
+          abs_surface(4,num_edge) == elmnts(ixmatch+1))) then
        abs_surface_char(IEDGE1,match) = .true.
     endif
 
-    if ((abs_surface(4,num_edge) == elmnts(ngnod*abs_surface_merge(match)+0) .and. &
-          abs_surface(3,num_edge) == elmnts(ngnod*abs_surface_merge(match)+1))) then
+    if ((abs_surface(4,num_edge) == elmnts(ixmatch+0) .and. &
+          abs_surface(3,num_edge) == elmnts(ixmatch+1))) then
        temp = abs_surface(4,num_edge)
        abs_surface(4,num_edge) = abs_surface(3,num_edge)
        abs_surface(3,num_edge) = temp
        abs_surface_char(IEDGE1,match) = .true.
     endif
 
-    if ((abs_surface(3,num_edge) == elmnts(ngnod*abs_surface_merge(match)+0) .and. &
-          abs_surface(4,num_edge) == elmnts(ngnod*abs_surface_merge(match)+3))) then
+    if ((abs_surface(3,num_edge) == elmnts(ixmatch+0) .and. &
+          abs_surface(4,num_edge) == elmnts(ixmatch+3))) then
        abs_surface_char(IEDGE4,match) = .true.
     endif
 
-    if ((abs_surface(4,num_edge) == elmnts(ngnod*abs_surface_merge(match)+0) .and. &
-          abs_surface(3,num_edge) == elmnts(ngnod*abs_surface_merge(match)+3))) then
+    if ((abs_surface(4,num_edge) == elmnts(ixmatch+0) .and. &
+          abs_surface(3,num_edge) == elmnts(ixmatch+3))) then
        temp = abs_surface(4,num_edge)
        abs_surface(4,num_edge) = abs_surface(3,num_edge)
        abs_surface(3,num_edge) = temp
        abs_surface_char(IEDGE4,match) = .true.
     endif
 
-    if ((abs_surface(3,num_edge) == elmnts(ngnod*abs_surface_merge(match)+1) .and. &
-          abs_surface(4,num_edge) == elmnts(ngnod*abs_surface_merge(match)+2))) then
+    if ((abs_surface(3,num_edge) == elmnts(ixmatch+1) .and. &
+          abs_surface(4,num_edge) == elmnts(ixmatch+2))) then
        abs_surface_char(IEDGE2,match) = .true.
     endif
 
-    if ((abs_surface(4,num_edge) == elmnts(ngnod*abs_surface_merge(match)+1) .and. &
-          abs_surface(3,num_edge) == elmnts(ngnod*abs_surface_merge(match)+2))) then
+    if ((abs_surface(4,num_edge) == elmnts(ixmatch+1) .and. &
+          abs_surface(3,num_edge) == elmnts(ixmatch+2))) then
        temp = abs_surface(4,num_edge)
        abs_surface(4,num_edge) = abs_surface(3,num_edge)
        abs_surface(3,num_edge) = temp
        abs_surface_char(IEDGE2,match) = .true.
     endif
 
-    if ((abs_surface(3,num_edge) == elmnts(ngnod*abs_surface_merge(match)+2) .and. &
-          abs_surface(4,num_edge) == elmnts(ngnod*abs_surface_merge(match)+3))) then
+    if ((abs_surface(3,num_edge) == elmnts(ixmatch+2) .and. &
+          abs_surface(4,num_edge) == elmnts(ixmatch+3))) then
        temp = abs_surface(4,num_edge)
        abs_surface(4,num_edge) = abs_surface(3,num_edge)
        abs_surface(3,num_edge) = temp
        abs_surface_char(IEDGE3,match) = .true.
     endif
 
-    if ((abs_surface(4,num_edge) == elmnts(ngnod*abs_surface_merge(match)+2) .and. &
-          abs_surface(3,num_edge) == elmnts(ngnod*abs_surface_merge(match)+3))) then
+    if ((abs_surface(4,num_edge) == elmnts(ixmatch+2) .and. &
+          abs_surface(3,num_edge) == elmnts(ixmatch+3))) then
        abs_surface_char(IEDGE3,match) = .true.
     endif
+
+!!  TEC Nov 2018
+    ! Require exactly one edge of each element be on the absorbing boundary
+    if (dbgPrt) then
+      print *, "num_edge= ",num_edge," abs_surface(:,*)= ",abs_surface(:,num_edge)
+      print *, "match, elmatch= ",match,elmatch, &
+              " elmnts(ixmatch+)= ",elmnts( ixmatch+(/0,1,2,3/) )
+      print *, "abs_surface_char(:,match)= ",abs_surface_char(:,match)
+    endif
+    if( count( abs_surface_char(:,match) ) /= 1 ) then
+      print *, "merge_abs_boundaries ERROR: Must have exactly one edge on boundary."
+      call stop_the_code("merge_abs_boundaries ERROR")
+    endif
+!   dbgPrt = num_edge < 5
 
   enddo
 
