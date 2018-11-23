@@ -215,6 +215,13 @@
 ! check the numbering obtained
   if (minval(ibool) /= 1 .or. maxval(ibool) /= nglob) call exit_MPI(myrank,'Error while generating global numbering')
 
+  if (myrank == 0) then
+    write(IMAIN,*)
+    write(IMAIN,*) '... Done generating global mesh numbering.'
+    write(IMAIN,*)
+    call flush_IMAIN()
+  endif
+
   end subroutine createnum_fast
 
 

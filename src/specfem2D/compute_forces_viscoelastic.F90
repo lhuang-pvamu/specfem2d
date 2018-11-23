@@ -32,7 +32,7 @@
 !========================================================================
 
   subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic,displ_elastic_old,dux_dxl_old,duz_dzl_old, &
-                                         dux_dzl_plus_duz_dxl_old,PML_BOUNDARY_CONDITIONS,e1,e11,e13,iphase)
+      dux_dzl_plus_duz_dxl_old,PML_BOUNDARY_CONDITIONS,e1,e11,e13,iphase)
 
   ! compute forces for the elastic elements
   use constants, only: CUSTOM_REAL,NGLLX,NGLLZ,NGLJ,NDIM, &
@@ -59,6 +59,7 @@
   use specfem_par, only: nspec_PML,ispec_is_PML,ROTATE_PML_ACTIVATE,ROTATE_PML_ANGLE
 
   implicit none
+  real, parameter :: big=1e30
 
   real(kind=CUSTOM_REAL), dimension(NDIM,nglob),intent(in) :: displ_elastic,veloc_elastic
   real(kind=CUSTOM_REAL), dimension(NDIM,nglob),intent(inout) :: accel_elastic
@@ -206,6 +207,11 @@
 
         ! derivatives of displacement
         dux_dxl(i,j) = dux_dxi(i,j)*xixl + dux_dgamma(i,j)*gammaxl
+if ( dux_dxl(i,j) > big ) then
+print *, i,j,dux_dxl(i,j)
+print *, dux_dxi(i,j), xixl, dux_dgamma(i,j), gammaxl
+call stop_the_code( "Overflowing dux_dxl, no attenuation, nonPML" )
+endif
         dux_dzl(i,j) = dux_dxi(i,j)*xizl + dux_dgamma(i,j)*gammazl
 
         duz_dxl(i,j) = duz_dxi(i,j)*xixl + duz_dgamma(i,j)*gammaxl
@@ -330,6 +336,12 @@
           if (P_SV) then
             ! P_SV case
             sigma_xx = lambdaplus2mu_unrelaxed_elastic * dux_dxl(i,j) + lambdal_unrelaxed_elastic * duz_dzl(i,j)
+if ( sigma_xx > big ) then
+print *, i,j,sigma_xx
+print *, lambdaplus2mu_unrelaxed_elastic, dux_dxl(i,j), lambdal_unrelaxed_elastic,duz_dzl(i,j)
+print *, dux_dxi(i,j), xixl, dux_dgamma(i,j), gammaxl
+call stop_the_code( "Overflowing sigma_xx, no attenuation, nonPML" )
+endif
             sigma_zz = lambdaplus2mu_unrelaxed_elastic * duz_dzl(i,j) + lambdal_unrelaxed_elastic * dux_dxl(i,j)
             sigma_xz = mul_unrelaxed_elastic * (duz_dxl(i,j) + dux_dzl(i,j))
             sigma_zx = sigma_xz
@@ -425,6 +437,11 @@
                 sigma_zz = st**2*sigma_xx_prime + ct*st*sigma_xz_prime + ct*st*sigma_zx_prime + ct**2*sigma_zz_prime
               else
                 sigma_xx = lambdaplus2mu_unrelaxed_elastic*dux_dxl(i,j) + lambdal_unrelaxed_elastic*PML_duz_dzl(i,j)
+if ( sigma_xx > big ) then
+print *, i,j,sigma_xx
+print *, lambdaplus2mu_unrelaxed_elastic, dux_dxl(i,j), lambdal_unrelaxed_elastic,PML_duz_dzl(i,j)
+call stop_the_code( "Overflowing sigma_xx, no attenuation, PML" )
+endif
                 sigma_zz = lambdaplus2mu_unrelaxed_elastic*duz_dzl(i,j) + lambdal_unrelaxed_elastic*PML_dux_dxl(i,j)
                 sigma_zx = mul_unrelaxed_elastic * (PML_duz_dxl(i,j) + dux_dzl(i,j))
                 sigma_xz = mul_unrelaxed_elastic * (PML_dux_dzl(i,j) + duz_dxl(i,j))
@@ -507,7 +524,6 @@
             sigma_zx = sigma_xz
           endif
         endif
-
         ! weak formulation term based on stress tensor (non-symmetric form)
         xixl = deriv(1,i,j)
         xizl = deriv(2,i,j)

@@ -3,7 +3,7 @@
 !                   S P E C F E M 2 D  Version 7 . 0
 !                   --------------------------------
 !
-!     Main historical authors: Dimitri Komatitsch and Jeroen Tromp
+!     Main historical authors: Dimitri Komatitsch and  Jeroen Tromp
 !                              CNRS, France
 !                       and Princeton University, USA
 !                 (there are currently many more authors!)
@@ -59,8 +59,9 @@
 
     ! main solver for the elastic elements
     ! visco-elastic term
-    call compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic,displ_elastic_old,dux_dxl_old,duz_dzl_old, &
-                                     dux_dzl_plus_duz_dxl_old,PML_BOUNDARY_CONDITIONS,e1,e11,e13,iphase)
+    call compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic, &
+        displ_elastic_old,dux_dxl_old,duz_dzl_old, &
+        dux_dzl_plus_duz_dxl_old,PML_BOUNDARY_CONDITIONS,e1,e11,e13,iphase)
 
     ! computes additional contributions to acceleration field
     if (iphase == 1) then

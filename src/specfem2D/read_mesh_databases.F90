@@ -533,7 +533,7 @@
   ! output formats
 107 format(/5x,'-- Spectral Elements --',//)
 
-207 format(5x,'Number of spectral elements . . . . . . . . .  (nspec) =',i7,/5x, &
+207 format(5x,'Number of spectral elements . . . . . . . . (nspec) =',i9,/5x, &
                'Number of control nodes per element . . . . . (ngnod) =',i7,/5x, &
                'Number of points in X-direction . . . . . . . (NGLLX) =',i7,/5x, &
                'Number of points in Y-direction . . . . . . . (NGLLZ) =',i7,/5x, &
@@ -844,6 +844,7 @@
   if (anyabs) then
 
     ! reads absorbing boundaries
+    print *, "Reading ",nelemabs," absorbing boundary edges"
     do inum = 1,nelemabs
 
       ! beware here and below that external meshes (for instance coming from CUBIT or Gmsh)
@@ -854,6 +855,11 @@
                 codeabsread(4), typeabsread, ibegin_edge1(inum), iend_edge1(inum), &
                 ibegin_edge2(inum), iend_edge2(inum), ibegin_edge3(inum), &
                 iend_edge3(inum), ibegin_edge4(inum), iend_edge4(inum)
+
+!      print *,inum, numabsread,codeabsread(1),codeabsread(2),codeabsread(3), &
+!                codeabsread(4), typeabsread, ibegin_edge1(inum), iend_edge1(inum), &
+!                ibegin_edge2(inum), iend_edge2(inum), ibegin_edge3(inum), &
+!                iend_edge3(inum), ibegin_edge4(inum), iend_edge4(inum)
 
       if (numabsread < 1 .or. numabsread > nspec) &
         call exit_MPI(myrank,'Wrong absorbing element number')
@@ -869,7 +875,7 @@
 
       ! check that a single edge is defined for each element cited
       ! (since elements with two absorbing edges MUST be cited twice, each time with a different "typeabs()" code
-      if (count(codeabs(:,inum) .eqv. .true.) /= 1) then
+      if ( count( codeabs(:,inum) ) /= 1 ) then
         print *,'Error for absorbing element inum = ',inum
         call stop_the_code('must have one and only one absorbing edge per absorbing line cited')
       endif

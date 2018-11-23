@@ -124,7 +124,7 @@
   use constants, only: MAX_STRING_LEN
 
   use part_unstruct_par, only: nelmnts
-  use shared_parameters, only: num_material
+  use shared_parameters, only: num_material, nbmodels
 
   implicit none
 
@@ -159,7 +159,11 @@
   close(992)
 
   ! quick check
+  print *, "read_external_materials_file:"
+  print *, "All material indices are between ",minval(num_material), &
+           " and ",maxval(num_material)
   if (any(num_material(:) == 0)) call stop_the_code('Error reading material array, some elements have zero material index')
+  if (any(num_material(:) > nbmodels)) call stop_the_code('Error reading material array, index too large')
 
   end subroutine read_external_materials_file
 

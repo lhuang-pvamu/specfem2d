@@ -57,6 +57,12 @@
   allocate(xadj_l(0:nelmnts))
   allocate(adjncy_l(0:MAX_NEIGHBORS*nelmnts-1))
 
+!DBG
+  print *, "acoustic_elastic_repartitioning:"
+  print *, "elmnts_l: ", shape(elmnts_l)
+  print *, "phi_material: ", shape(phi_material)
+  print *, "num_material: ", shape(num_material)
+
   ! sets domain flags
   is_acoustic(:) = .false.
   is_elastic(:) = .false.
