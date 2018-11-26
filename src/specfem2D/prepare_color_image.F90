@@ -98,12 +98,14 @@
     call exit_MPI(myrank,'output image too big: NZ_IMAGE_color > 65534; increase factor_subsample_image in DATA/Par_file.')
 
   if (NX_IMAGE_color > NX_NZ_IMAGE_MAX) then
-    print *,'NX_IMAGE_color,NX_NZ_IMAGE_MAX = ',NX_IMAGE_color,NX_NZ_IMAGE_MAX
+    print *,'NX_IMAGE_color,NX_NZ_IMAGE_MAX,factor_subsample_image = ', & 
+        NX_IMAGE_color,NX_NZ_IMAGE_MAX,factor_subsample_image
     call exit_MPI(myrank, &
       'output image too big: NX_IMAGE_color > NX_NZ_IMAGE_MAX; increase factor_subsample_image or change NX_NZ_IMAGE_MAX.')
   endif
   if (NZ_IMAGE_color > NX_NZ_IMAGE_MAX) then
-    print *,'NZ_IMAGE_color,NX_NZ_IMAGE_MAX = ',NZ_IMAGE_color,NX_NZ_IMAGE_MAX
+    print *,'NZ_IMAGE_color,NX_NZ_IMAGE_MAX,factor_subsample_image = ', &
+        NZ_IMAGE_color,NX_NZ_IMAGE_MAX,factor_subsample_image
     call exit_MPI(myrank, &
       'output image too big: NZ_IMAGE_color > NX_NZ_IMAGE_MAX; increase factor_subsample_image or change NX_NZ_IMAGE_MAX.')
   endif
