@@ -13,17 +13,21 @@ class Model_spec(object):
     QmuLayers = []
     VpDict = {}
     
-    def __init__(self):
+    def __init__(self,filename,sub):
     # Define parameters for the gridded model
 
         self.case = "KAUST Red Sea model"
-        self.nzNodes = 2801
+        self.nzNodesIn = 2801
+        self.zMax = 0.  # Z is elevation (increasing upwards), not depth
         self.dz = 1.25
-        self.nxNodes = 9441
+        self.nxNodesIn = 9441
+        self.xMin = 0.
         self.dx = 1.25
-        self.nBdry = 10 # boundary layer thickness (cells)
-        
-    # Layer properties 
+        self.nBdry = 5  # boundary layer thickness (cells)
+        self.incX = sub
+        self.incZ = sub
+
+    # Layer properties dictionary
         # range of model P-velocities discretized to nearest 100
         self.VpLayers = np.multiply( range(14,54), 100.)
         self.nLayers = len(self.VpLayers)
@@ -53,22 +57,48 @@ class Model_spec(object):
 
     # Derived values not specific to given model
         # Variables ending in Ext pertain to the "boundary-Extended" model
+        self.nxCells = (self.nxNodesIn-1) / self.incX
+        self.nzCells = (self.nzNodesIn-1) / self.incZ
+        self.nCells = self.nxCells * self.nzCells
+        self.nxNodes = self.nxCells+1
+        self.nzNodes = self.nzCells+1
         self.nxNodesExt = self.nxNodes + 2*self.nBdry
         self.nzNodesExt = self.nzNodes + self.nBdry
         self.nNodesExt = self.nxNodesExt * self.nzNodesExt
-        self.nxCells = self.nxNodes-1
-        self.nzCells = self.nzNodes-1
-        self.nCells = self.nxCells * self.nzCells
         self.nxCellsExt = self.nxNodesExt-1
         self.nzCellsExt = self.nzNodesExt-1
         self.nCellsExt = self.nxCellsExt * self.nzCellsExt
-        self.xMin = 0.
-        self.xMax = self.dx * (self.nxNodes-1)
+        self.dx *= self.incX
+        self.xMax = self.xMin + self.dx * self.nxCells
         self.xMinExt = self.xMin - self.dx * self.nBdry
         self.xMaxExt = self.xMax + self.dx * self.nBdry
-        self.zMax = 0.
-        self.zMin = self.zMax - self.dz * (self.nzNodes-1)
+        self.dz *= self.incZ
+        self.zMin = self.zMax - self.dz * self.nzCells
         self.zMinExt = self.zMin - self.dz * self.nBdry
+
+    # Open the P-velocity for for sequential access
+        self.fdVp = open(filename,'r')
+        self.inCount = 0
+
+    def nextCol(self):
+        # Return next sub-sampled velocity column
+        if self.fdVp.closed:
+            print "ERROR: Reading column",self.inCount,"beyond EOF on:",self.fdVp.name
+            sys.exit(1)
+        nzIn = self.nzNodesIn
+        VpBuf = [0.]
+        if self.inCount==0:
+            self.inFirst = False
+            VpBuf = np.fromfile(self.fdVp, dtype="f4", count=nzIn)
+            self.inCount += 1
+        else:
+            for i in range(self.incX):  # take every incX columns
+                VpBuf = np.fromfile(self.fdVp, dtype="f4", count=nzIn)
+                if len(VpBuf) == 0:
+                    self.fdVp.close()
+                    return []
+                self.inCount += 1        
+        return VpBuf[ range(0,nzIn,self.incZ) ]     # take every incZ rows
 
     def __str__(self):
         return \
@@ -118,7 +148,7 @@ class Model_spec(object):
         return ixLayer
 
     
-def grid_mesher(filename):
+def grid_mesher(filename,sub):
 
     # Builds a SpecFEM2D "external mesh" using grid metadata,
     # with given material layer properties assigned to each cell (element)
@@ -138,7 +168,7 @@ def grid_mesher(filename):
     # extended into the lower absorbing boundary.
     # The first and last columns are treated specially for absorbing end layers.
 
-    mdl = Model_spec()
+    mdl = Model_spec(filename,sub)
 
     print mdl
 
@@ -197,15 +227,14 @@ def grid_mesher(filename):
     nBdryCells,"absorbing boundary elements."
 
     print "Reading columns from gridded binary Vp file:",filename
-    fdVp = open(filename,'r')
 
     # Process each column in extended model
     ixCell = 0      # count the cell elements as we create them
     isXbdry = False
     for ic in range(mdl.nxCellsExt):    # Process each column of cell elements
         if not isXbdry:
-            VpBuf = np.fromfile(fdVp, dtype="f4", count=mdl.nzNodes)
-            if len(VpBuf>0):
+            VpBuf = mdl.nextCol()
+            if len(VpBuf) > 0:
                 VpCol = VpBuf
         if ic<mdl.nBdry or ic>=mdl.nxCellsExt-mdl.nBdry:
             print "boundary columns:",ic
@@ -255,7 +284,6 @@ def grid_mesher(filename):
             isXbdry = False
         VpPrev = VpCol
 
-    fdVp.close()
     fdCellNodes.close()
     fdCellProps.close()
     fdFreeSurf.close()
@@ -264,9 +292,10 @@ def grid_mesher(filename):
 
 
 def usage():
-    print "usage: ./bin2mesh.py file "
+    print "usage: ./bin2mesh.py file [sub]"
     print "   where"
     print "       file - name of file containing grid of binary Vp velocity values"
+    print "       sub  - subsample interval in Z and X (optional)"
 
 if __name__ == '__main__':
     print "bin2mesh -- Create xmeshfem2d mesh files from binary data on (z,x) grid"
@@ -276,8 +305,10 @@ if __name__ == '__main__':
         print "ERROR: 'file' argument needed"
         usage()
         sys.exit(1)
-    else:
-        file = sys.argv[1]
+    file = sys.argv[1]
+    sub = 1
+    if len(sys.argv) >=2:
+        sub = int(sys.argv[2])
 
-    grid_mesher(file)
+    grid_mesher(file,sub)
 
