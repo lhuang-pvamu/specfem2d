@@ -37,13 +37,13 @@ if [ "$NPROC" -eq 1 ]; then
   echo
   echo "running mesher..."
   echo
-  time ./xmeshfem2D
+  time ./xmeshfem2D |tee OUTPUT_FILES/stdout.txt
 else
   # This is a MPI simulation
   echo
   echo "running mesher on $NPROC processors..."
   echo
-  time mpirun -np $NPROC ./xmeshfem2D
+  time mpirun -np $NPROC ./xmeshfem2D |tee OUTPUT_FILES/stdout.txt
 fi
 # checks exit code
 if [[ $? -ne 0 ]]; then exit 1; fi
@@ -54,13 +54,13 @@ if [ "$NPROC" -eq 1 ]; then
   echo
   echo "running solver..."
   echo
-  time ./xspecfem2D
+  time ./xspecfem2D |tee -a OUTPUT_FILES/stdout.txt
 else
   # This is a MPI simulation
   echo
   echo "running solver on $NPROC processors..."
   echo
-  time mpirun -np $NPROC ./xspecfem2D
+  time mpirun -np $NPROC ./xspecfem2D |tee -a OUTPUT_FILES/stdout.txt
 fi
 # checks exit code
 if [[ $? -ne 0 ]]; then exit 1; fi
