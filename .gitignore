@@ -92,3 +92,4 @@ utils/RectangularGrid/relerrsmooth
 utils/RectangularGrid/Veloc_Model_edit_Rand_waves_export_BIN_spec_v0.m
 utils/RectangularGrid/vp_redsea_model.segy
 utils/RectangularGrid/vp_redsea_model.su
+EXAMPLES/RedSea_KAUST/visco_OUTPUTS

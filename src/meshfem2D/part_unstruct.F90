@@ -771,7 +771,7 @@
 
     abs_surface_merge(match) = abs_surface(1,num_edge)
     elmatch = abs_surface_merge(match)
-    ixmatch = ngnod*(elmatch-1)      ! <<< TEC fix
+    ixmatch = ngnod*elmatch      ! <<< TEC fix <<< restored 1/21/2019 TEC
 !! DK DK Sept 2012 added the absorbing interface type for Stacey
     abs_surface_type(match) = abs_surface(5,num_edge)
 
