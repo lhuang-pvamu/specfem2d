@@ -1,29 +1,30 @@
 #-----------------------------------------------------------------------------
-# 
 # simulation input parameters
-#
 #-----------------------------------------------------------------------------
-title = Red Sea (KAUST) -- simple initial model
+
+# title of job
+title                           = Red Sea model from KAUST
 
 # forward or adjoint simulation
-# 1 = forward, 2 = adjoint, 3 = both simultaneously ( 2 is UNUSED )
+# 1 = forward, 2 = adjoint, 3 = both simultaneously
 SIMULATION_TYPE                 = 1
 # 0 = regular wave propagation simulation, 1/2/3 = noise simulation
 NOISE_TOMOGRAPHY                = 0
 # save the last frame, needed for adjoint simulation
 SAVE_FORWARD                    = .false.
 
-# parameters for partitioning
-NPROC                           = 1              # number of processes
-partitioning_method             = 3              # SCOTCH = 3
+# parameters concerning partitioning
+NPROC                           = 1      # number of processes
+partitioning_method             = 3      # SCOTCH = 3, ascending order (bad idea) = 1
 
 # number of control nodes per element (4 or 9)
 ngnod                           = 4
 
-# time step parameters (recording time 5 sec)
+# time step parameters
 # total number of time steps
-NSTEP                           = 10001  # number of time steps
-DT                              = .0005 # time step size
+NSTEP                           = 30000
+# duration of a time step (see section "How to choose the time step" of the manual for how to do this)
+DT                              = .000166666666666
 
 # time stepping
 # 1 = Newmark (2nd order), 2 = LDDRK4-6 (4th-order 6-stage low storage Runge-Kutta), 3 = classical RK4 4th-order 4-stage Runge-Kutta
@@ -35,7 +36,8 @@ AXISYM                          = .false.
 # set the type of calculation (P-SV or SH/membrane waves)
 P_SV                            = .true.
 
-GPU_MODE                        = .false.  # use GPUs?
+# set to true to use GPUs
+GPU_MODE                        = .false.
 
 # creates/reads a binary database that allows to skip all time consuming setup steps in initialization
 # 0 = does not read/create database
@@ -70,7 +72,7 @@ ATTENUATION_VISCOACOUSTIC       = .false.        # turn attenuation (viscoacoust
 
 # for viscoelastic or viscoacoustic attenuation
 N_SLS                           = 3              # number of standard linear solids for attenuation (3 is usually the minimum)
-ATTENUATION_f0_REFERENCE        = 5.             # (Hz) relevant only if source is a Dirac or a Heaviside, otherwise it is f0 the dominant frequency of the source in the DATA/SOURCE file
+ATTENUATION_f0_REFERENCE        = 5.196          # (Hz) relevant only if source is a Dirac or a Heaviside, otherwise it is f0 the dominant frequency of the source in the DATA/SOURCE file
 READ_VELOCITIES_AT_f0           = .false.        # shift velocities to account for physical dispersion (see user manual for more information)
 USE_SOLVOPT                     = .false.        # use more precise but much more expensive way of determining the Q factor relaxation times, as in http://komatitsch.free.fr/preprints/GJI_Lombard_2016.pdf
 
@@ -101,7 +103,7 @@ force_normal_to_surface         = .false.        # angleforce normal to surface 
 
 # use an existing initial wave field as source or start from zero (medium initially at rest)
 initialfield                    = .false.
-add_Bielak_conditions_bottom    = .false.        
+add_Bielak_conditions_bottom    = .false.        # add Bielak conditions or not if initial plane wave
 add_Bielak_conditions_right     = .false.
 add_Bielak_conditions_top       = .false.
 add_Bielak_conditions_left      = .false.
@@ -125,14 +127,16 @@ subsamp_seismos                 = 1
 # so far, this option can only be used if all the receivers are in acoustic elements
 USE_TRICK_FOR_BETTER_PRESSURE   = .false.
 
-# time step interval to save the seismograms
-NSTEP_BETWEEN_OUTPUT_SEISMOS    = 1000
+# every how many time steps we save the seismograms
+# (costly, do not use a very small value; if you use a very large value that is larger than the total number
+#  of time steps of the run, the seismograms will automatically be saved once at the end of the run anyway)
+NSTEP_BETWEEN_OUTPUT_SEISMOS    = 10000
 
 # use this t0 as earliest starting time rather than the automatically calculated one
-USER_T0                         = 0.0
+USER_T0                         = 0.0d0
 
 # seismogram formats
-save_ASCII_seismograms          = .false.         # save seismograms in ASCII format?
+save_ASCII_seismograms          = .false.         # save seismograms in ASCII format or not
 save_binary_seismograms_single  = .true.         # save seismograms in single precision binary format or not (can be used jointly with ASCII above to save both)
 save_binary_seismograms_double  = .false.        # save seismograms in double precision binary format or not (can be used jointly with both flags above to save all)
 SU_FORMAT                       = .true.        # output single precision binary seismograms in Seismic Unix format (adjoint traces will be read in the same format)
@@ -148,12 +152,13 @@ anglerec                        = 0.d0           # angle to rotate components at
 rec_normal_to_surface           = .false.        # base anglerec normal to surface (external mesh and curve file needed)
 
 # first receiver set (repeat these 6 lines and adjust nreceiversets accordingly)
-nrec                            = 119             # number of receivers
-xdeb                            = 0.           # first receiver x in meters
-zdeb                            = -10.          # first receiver z in meters
-xfin                            = 11800.          # last receiver x in meters (ignored if only one receiver)
-zfin                            = -10.          # last receiver z in meters (ignored if only one receiver)
+nrec                            = 119            # number of receivers
+xdeb                            = 0.             # first receiver x in meters
+zdeb                            = -10.             # first receiver z in meters
+xfin                            = 11800.         # last receiver x in meters (ignored if only one receiver)
+zfin                            = -10.             # last receiver z in meters (ignored if only one receiver)
 record_at_surface_same_vertical = .false.         # receivers inside the medium or at the surface (z values are ignored if this is set to true, they are replaced with the topography height)
+
 
 #-----------------------------------------------------------------------------
 #
@@ -176,16 +181,16 @@ NSTEP_BETWEEN_COMPUTE_KERNELS   = 1
 # Perfectly Matched Layer (PML) boundaries
 # absorbing boundary active or not
 PML_BOUNDARY_CONDITIONS         = .true.
-NELEM_PML_THICKNESS             = 5
+NELEM_PML_THICKNESS             = 10
 ROTATE_PML_ACTIVATE             = .false.
 ROTATE_PML_ANGLE                = 30.
 # change the four parameters below only if you know what you are doing; they change the damping profiles inside the PMLs
-K_MIN_PML                       = 1.0 # from Gedney page 8.11
-K_MAX_PML                       = 1.0
-damping_change_factor_acoustic  = 0.5
-damping_change_factor_elastic   = 1.0
+K_MIN_PML                       = 1.0d0 # from Gedney page 8.11
+K_MAX_PML                       = 1.0d0
+damping_change_factor_acoustic  = 0.5d0
+damping_change_factor_elastic   = 1.0d0
 # set the parameter below to .false. unless you know what you are doing; this implements automatic adjustment of the PML parameters for elongated models.
-# The goal is to improve the absorbing efficiency of PML for waves with large incidence angles, but this can lead to artefacts.
+# The goal is to improve the absorbing efficiency of PML for waves with large incidence angles, but this can lead to artifacts.
 # In particular, this option is efficient only when the number of sources NSOURCES is equal to one.
 PML_PARAMETER_ADJUSTMENT        = .false.
 
@@ -215,19 +220,54 @@ PERIODIC_HORIZ_DIST             = 4000.d0
 #   poroelastic: model_number 3 rhos rhof phi c kxx kxz kzz Ks Kf Kfr etaf mufr Qmu
 #   tomo:        model_number -1 0 0 A 0 0 0 0 0 0 0 0 0 0
 
-nbmodels                        = 5  # number of model materials
-1 1 2650.0 5300.0 3120.0 0 0 42.6 58.4 0 0 0 0 0 0   # basement
-2 1 2450.0 3900.0 2050.0 0 0 40.9 47.8 0 0 0 0 0 0   # carbonate
-3 1 2170.0 4500.0 2250.0 0 0 41.6 52.6 0 0 0 0 0 0   # salt
-4 1 2170.0 2400.0 1078.4 0 0 39.1 32.8 0 0 0 0 0 0   # clastics
-5 1 1750.0 1400.0  270.0 0 0 36.0 16.5 0 0 0 0 0 0   # overburden
+nbmodels =  40
 
-
+1 1 1750.0 1400.0 270.0 0 0 36.0 16.5 0 0 0 0 0 0
+2 1 1929.23 1500.0 353.0 0 0 36.59 18.79 0 0 0 0 0 0
+3 1 1960.61 1600.0 433.6 0 0 37.06 20.82 0 0 0 0 0 0
+4 1 1990.55 1700.0 514.2 0 0 37.46 22.68 0 0 0 0 0 0
+5 1 2019.2 1800.0 594.8 0 0 37.8 24.39 0 0 0 0 0 0
+6 1 2046.68 1900.0 675.4 0 0 38.08 25.99 0 0 0 0 0 0
+7 1 2073.09 2000.0 756.0 0 0 38.33 27.5 0 0 0 0 0 0
+8 1 2098.54 2100.0 836.6 0 0 38.56 28.92 0 0 0 0 0 0
+9 1 2123.08 2200.0 917.2 0 0 38.75 30.29 0 0 0 0 0 0
+10 1 2146.81 2300.0 997.8 0 0 38.93 31.59 0 0 0 0 0 0
+11 1 2169.77 2400.0 1078.4 0 0 39.1 32.84 0 0 0 0 0 0
+12 1 2192.03 2500.0 1159.0 0 0 39.25 34.04 0 0 0 0 0 0
+13 1 2213.63 2600.0 1239.6 0 0 39.4 35.21 0 0 0 0 0 0
+14 1 2234.61 2700.0 1320.2 0 0 39.54 36.33 0 0 0 0 0 0
+15 1 2255.02 2800.0 1400.8 0 0 39.67 37.43 0 0 0 0 0 0
+16 1 2274.89 2900.0 1481.4 0 0 39.8 38.49 0 0 0 0 0 0
+17 1 2294.26 3000.0 1562.0 0 0 39.92 39.52 0 0 0 0 0 0
+18 1 2313.14 3100.0 1642.6 0 0 40.05 40.53 0 0 0 0 0 0
+19 1 2331.57 3200.0 1723.2 0 0 40.17 41.51 0 0 0 0 0 0
+20 1 2349.58 3300.0 1803.8 0 0 40.29 42.47 0 0 0 0 0 0
+21 1 2367.18 3400.0 1884.4 0 0 40.4 43.41 0 0 0 0 0 0
+22 1 2384.4 3500.0 1965.0 0 0 40.51 44.33 0 0 0 0 0 0
+23 1 2401.25 3600.0 2045.6 0 0 40.63 45.23 0 0 0 0 0 0
+24 1 2417.75 3700.0 2126.2 0 0 40.74 46.11 0 0 0 0 0 0
+25 1 2433.93 3800.0 2206.8 0 0 40.85 46.98 0 0 0 0 0 0
+26 1 2450.0 3900.0 2050.0 0 0 40.97 47.83 0 0 0 0 0 0
+27 1 2465.34 4000.0 2368.0 0 0 41.08 48.66 0 0 0 0 0 0
+28 1 2480.61 4100.0 2448.6 0 0 41.19 49.48 0 0 0 0 0 0
+29 1 2495.59 4200.0 2529.2 0 0 41.31 50.29 0 0 0 0 0 0
+30 1 2510.32 4300.0 2609.8 0 0 41.42 51.09 0 0 0 0 0 0
+31 1 2524.79 4400.0 2690.4 0 0 41.53 51.87 0 0 0 0 0 0
+32 1 2170.0 4500.0 2250.0 0 0 41.64 52.64 0 0 0 0 0 0
+33 1 2553.0 4600.0 2851.6 0 0 41.76 53.4 0 0 0 0 0 0
+34 1 2566.77 4700.0 2932.2 0 0 41.88 54.15 0 0 0 0 0 0
+35 1 2580.31 4800.0 3012.8 0 0 41.99 54.89 0 0 0 0 0 0
+36 1 2593.65 4900.0 3093.4 0 0 42.1 55.62 0 0 0 0 0 0
+37 1 2606.78 5000.0 3174.0 0 0 42.22 56.34 0 0 0 0 0 0
+38 1 2619.72 5100.0 3254.6 0 0 42.33 57.05 0 0 0 0 0 0
+39 1 2632.46 5200.0 3335.2 0 0 42.45 57.75 0 0 0 0 0 0
+40 1 2650.0 5300.0 3120.0 0 0 42.56 58.44 0 0 0 0 0 0
+ 
 # external tomography file
-TOMOGRAPHY_FILE                 = ./DATA/dummy_tomo_file.xyz
+TOMOGRAPHY_FILE                 = ./DATA/xxxxx
 
 # use an external mesh created by an external meshing tool or use the internal mesher
-read_external_mesh              = .false.
+read_external_mesh              = .true.
 
 
 #-----------------------------------------------------------------------------
@@ -238,7 +278,6 @@ read_external_mesh              = .false.
 
 # data concerning mesh, when generated using third-party app (more info in README)
 # (see also absorbing_conditions above)
-
 # file containing the mesh
 mesh_file                       = ./DATA/mesh_element_node_indices          
 # file containing the nodes coordinates
@@ -255,10 +294,8 @@ absorbing_cpml_file             = ./DATA/absorbing_boundary_elements
 # Not using these ...
 # file containing the axial elements if AXISYM is true
 axial_elements_file             = ./DATA/axial_elements_file   
-# file containing the acoustic forcing surface
-acoustic_forcing_surface_file   = ./DATA/MSH/Surf_acforcing_Bottom_enforcing_mesh   
-# file containing the curve delimiting the velocity model
-tangential_detection_curve_file = ./DATA/courbe_eros_nodes  
+acoustic_forcing_surface_file   = ./DATA/MSH/Surf_acforcing_Bottom_enforcing_mesh   # file containing the acoustic forcing surface
+tangential_detection_curve_file = ./DATA/courbe_eros_nodes  # file containing the curve delimiting the velocity model
 
 #-----------------------------------------------------------------------------
 #
@@ -267,12 +304,12 @@ tangential_detection_curve_file = ./DATA/courbe_eros_nodes
 #-----------------------------------------------------------------------------
 
 # file containing interfaces for internal mesh
-interfacesfile                  = ./interfaces.txt
+interfacesfile                  = ./interfaces_simple_topo_curved.dat
 
 # geometry of the model (origin lower-left corner = 0,0) and mesh description
-xmin                            = 0.0           # abscissa of left side of the model
-xmax                            = 11800.        # abscissa of right side of the model
-nx                              = 119             # number of elements along X
+xmin                            = 0.d0           # abscissa of left side of the model
+xmax                            = 4000.d0        # abscissa of right side of the model
+nx                              = 80             # number of elements along X
 
 # absorbing boundary parameters (see absorbing_conditions above)
 absorbbottom                    = .true.
@@ -281,14 +318,12 @@ absorbtop                       = .false.
 absorbleft                      = .true.
 
 # define the different regions of the model in the (nx,nz) spectral-element mesh
-nbregions                       = 5               # then set below the different regions and model number for each region
+nbregions                       = 4              # then set below the different regions and model number for each region
 # format of each line: nxmin nxmax nzmin nzmax material_number
-1 119  1 16 1
-1 119 17 24 2
-1 119 25 32 3
-1 119 33 44 4
-1 119 45 50 5 
-
+1 80  1 20 1
+1 80 21 40 2
+1 80 41 60 3
+60 70 21 40 4
 
 #-----------------------------------------------------------------------------
 #
@@ -297,10 +332,10 @@ nbregions                       = 5               # then set below the different
 #-----------------------------------------------------------------------------
 
 # every how many time steps we display information about the simulation (costly, do not use a very small value)
-NSTEP_BETWEEN_OUTPUT_INFO       = 500
+NSTEP_BETWEEN_OUTPUT_INFO       = 100
 
 # meshing output
-output_grid_Gnuplot             = .true.        # generate a GNUPLOT file containing the grid, and a script to plot it
+output_grid_Gnuplot             = .false.        # generate a GNUPLOT file containing the grid, and a script to plot it
 output_grid_ASCII               = .false.        # dump the grid in an ASCII text file consisting of a set of X,Y,Z points or not
 
 # to plot total energy curves, for instance to monitor how CPML absorbing layers behave;
@@ -322,7 +357,7 @@ COMPUTE_INTEGRATED_ENERGY_FIELD = .false.
 
 # every how many time steps we draw JPEG or PostScript pictures of the simulation
 # and/or we dump results of the simulation as ASCII or binary files (costly, do not use a very small value)
-NSTEP_BETWEEN_OUTPUT_IMAGES     = 500
+NSTEP_BETWEEN_OUTPUT_IMAGES     = 1000
 
 # minimum amplitude kept in % for the JPEG and PostScript snapshots; amplitudes below that are muted
 cutsnaps                        = 1.
@@ -330,10 +365,10 @@ cutsnaps                        = 1.
 #### for JPEG color images ####
 output_color_image              = .true.         # output JPEG color image of the results every NSTEP_BETWEEN_OUTPUT_IMAGES time steps or not
 imagetype_JPEG                  = 2              # display 1=displ_Ux 2=displ_Uz 3=displ_norm 4=veloc_Vx 5=veloc_Vz 6=veloc_norm 7=accel_Ax 8=accel_Az 9=accel_norm 10=pressure
-factor_subsample_image          = 1.0          # (double precision) factor to subsample or oversample (if set to e.g. 0.5) color images output by the code (useful for very large models, or to get nicer looking denser pictures)
+factor_subsample_image          = 2.0            # (double precision) factor to subsample or oversample (if set to e.g. 0.5) color images output by the code (useful for very large models, or to get nicer looking denser pictures)
 USE_CONSTANT_MAX_AMPLITUDE      = .false.        # by default the code normalizes each image independently to its maximum; use this option to use the global maximum below instead
-CONSTANT_MAX_AMPLITUDE_TO_USE   = 1.17         # constant maximum amplitude to use for all color images if the above USE_CONSTANT_MAX_AMPLITUDE option is true
-POWER_DISPLAY_COLOR             = 0.30         # non linear display to enhance small amplitudes in JPEG color images
+CONSTANT_MAX_AMPLITUDE_TO_USE   = 1.17d4         # constant maximum amplitude to use for all color images if the above USE_CONSTANT_MAX_AMPLITUDE option is true
+POWER_DISPLAY_COLOR             = 0.30d0         # non linear display to enhance small amplitudes in JPEG color images
 DRAW_SOURCES_AND_RECEIVERS      = .true.         # display sources as orange crosses and receivers as green squares in JPEG images or not
 DRAW_WATER_IN_BLUE              = .true.         # display acoustic layers as constant blue in JPEG images, because they likely correspond to water in the case of ocean acoustics or in the case of offshore oil industry experiments (if off, display them as greyscale, as for elastic or poroelastic elements, for instance for acoustic-only oil industry models of solid media)
 USE_SNAPSHOT_NUMBER_IN_FILENAME = .false.        # use snapshot number in the file name of JPEG color snapshots instead of the time step (for instance to create movies in an easier way later)
