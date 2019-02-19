@@ -54,87 +54,82 @@ Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
         realw_const_p d_wxgll,
         const realw* d_rhostore){
 
-    // block-id == number of local element id in phase_ispec array
-    int bx = blockIdx.y*gridDim.x+blockIdx.x;
-    // thread-id == GLL node id
-    int tx = threadIdx.x;
+    for(int bx=0; bx< nb_blocks_to_compute; bx++) {
+        for(int tx=0; tx< NGLL2; tx++) {
 
-    realw xixl,xizl,gammaxl,gammazl;
+            realw xixl,xizl,gammaxl,gammazl;
+            realw dpotentialdxl,dpotentialdzl;
+            realw rho_invl_times_jacobianl;
+            realw sum_terms;
 
-    realw dpotentialdxl,dpotentialdzl;
-    realw rho_invl_times_jacobianl;
+            __shared__ realw s_dummy_loc[2*NGLL2];
+            __shared__ realw s_temp1[NGLL2];
+            __shared__ realw s_temp3[NGLL2];
+            __shared__ realw sh_hprime_xx[NGLL2];
+            __shared__ realw sh_hprimewgll_xx[NGLL2];
+            __shared__ realw sh_wxgll[NGLLX];
 
-    realw sum_terms;
+            if (bx >= nb_blocks_to_compute ) return;
 
-    __shared__ realw s_dummy_loc[2*NGLL2];
+            int offset = (d_phase_ispec_inner_acoustic[bx + num_phase_ispec_acoustic*(d_iphase-1)]-1)*NGLL2_PADDED + tx;
 
-    __shared__ realw s_temp1[NGLL2];
-    __shared__ realw s_temp3[NGLL2];
+            int iglob = d_ibool[offset] - 1;
 
-    __shared__ realw sh_hprime_xx[NGLL2];
-    __shared__ realw sh_hprimewgll_xx[NGLL2];
-    __shared__ realw sh_wxgll[NGLLX];
+            // changing iglob indexing to match fortran row changes fast style
+            s_dummy_loc[tx] = d_potential_acoustic[iglob];
+            if (nb_field==2) s_dummy_loc[NGLL2+tx]=d_b_potential_acoustic[iglob];
 
-    if (bx >= nb_blocks_to_compute ) return;
+            int J = (tx/NGLLX);
+            int I = (tx-J*NGLLX);
 
-    int offset = (d_phase_ispec_inner_acoustic[bx + num_phase_ispec_acoustic*(d_iphase-1)]-1)*NGLL2_PADDED + tx;
+            xixl = get_global_cr( &d_xix[offset] );
+            xizl = d_xiz[offset];
+            gammaxl = d_gammax[offset];
+            gammazl = d_gammaz[offset];
 
-    int iglob = d_ibool[offset] - 1;
+            rho_invl_times_jacobianl = 1.f /(d_rhostore[offset] * (xixl*gammazl-gammaxl*xizl));
 
-    // changing iglob indexing to match fortran row changes fast style
-    s_dummy_loc[tx] = d_potential_acoustic[iglob];
-    if (nb_field==2) s_dummy_loc[NGLL2+tx]=d_b_potential_acoustic[iglob];
+            sh_hprime_xx[tx] = d_hprime_xx[tx];
+            sh_hprimewgll_xx[tx] = d_hprimewgll_xx[tx];
 
-    int J = (tx/NGLLX);
-    int I = (tx-J*NGLLX);
+            if (threadIdx.x < NGLLX){
+                sh_wxgll[tx] = d_wxgll[tx];
+            }
+            for (int k=0 ; k < nb_field ; k++) {
+                __syncthreads();
 
-    xixl = get_global_cr( &d_xix[offset] );
-    xizl = d_xiz[offset];
-    gammaxl = d_gammax[offset];
-    gammazl = d_gammaz[offset];
+                realw temp1l = 0.f;
+                realw temp3l = 0.f;
 
-    rho_invl_times_jacobianl = 1.f /(d_rhostore[offset] * (xixl*gammazl-gammaxl*xizl));
+                for (int l=0;l<NGLLX;l++) {
+                    temp1l += s_dummy_loc[NGLL2*k+J*NGLLX+l] * sh_hprime_xx[l*NGLLX+I];
+                    temp3l += s_dummy_loc[NGLL2*k+l*NGLLX+I] * sh_hprime_xx[l*NGLLX+J];
+                }
 
-    sh_hprime_xx[tx] = d_hprime_xx[tx];
-    sh_hprimewgll_xx[tx] = d_hprimewgll_xx[tx];
+                dpotentialdxl = xixl*temp1l +  gammaxl*temp3l;
+                dpotentialdzl = xizl*temp1l +  gammazl*temp3l;
 
-    if (threadIdx.x < NGLLX){
-        sh_wxgll[tx] = d_wxgll[tx];
-    }
-    for (int k=0 ; k < nb_field ; k++) {
-        __syncthreads();
+                s_temp1[tx] = sh_wxgll[J]*rho_invl_times_jacobianl  * (dpotentialdxl*xixl  + dpotentialdzl*xizl)  ;
+                s_temp3[tx] = sh_wxgll[I]*rho_invl_times_jacobianl  * (dpotentialdxl*gammaxl + dpotentialdzl*gammazl)  ;
 
-        realw temp1l = 0.f;
-        realw temp3l = 0.f;
+                __syncthreads();
 
-        for (int l=0;l<NGLLX;l++) {
-            temp1l += s_dummy_loc[NGLL2*k+J*NGLLX+l] * sh_hprime_xx[l*NGLLX+I];
-            temp3l += s_dummy_loc[NGLL2*k+l*NGLLX+I] * sh_hprime_xx[l*NGLLX+J];
-        }
+                sum_terms = 0.f;
+                for (int l=0;l<NGLLX;l++) {
+                    sum_terms -= s_temp1[J*NGLLX+l] * sh_hprimewgll_xx[I*NGLLX+l] + s_temp3[l*NGLLX+I] * sh_hprimewgll_xx[J*NGLLX+l];
+                }
 
-        dpotentialdxl = xixl*temp1l +  gammaxl*temp3l;
-        dpotentialdzl = xizl*temp1l +  gammazl*temp3l;
-
-        s_temp1[tx] = sh_wxgll[J]*rho_invl_times_jacobianl  * (dpotentialdxl*xixl  + dpotentialdzl*xizl)  ;
-        s_temp3[tx] = sh_wxgll[I]*rho_invl_times_jacobianl  * (dpotentialdxl*gammaxl + dpotentialdzl*gammazl)  ;
-
-        __syncthreads();
-
-        sum_terms = 0.f;
-        for (int l=0;l<NGLLX;l++) {
-            sum_terms -= s_temp1[J*NGLLX+l] * sh_hprimewgll_xx[I*NGLLX+l] + s_temp3[l*NGLLX+I] * sh_hprimewgll_xx[J*NGLLX+l];
-        }
-
-        if (k==0) {
-            atomicAdd(&d_potential_dot_dot_acoustic[iglob],sum_terms);
-        } else {
-            atomicAdd(&d_b_potential_dot_dot_acoustic[iglob],sum_terms);
+                if (k==0) {
+                    atomicAdd(&d_potential_dot_dot_acoustic[iglob],sum_terms);
+                } else {
+                    atomicAdd(&d_b_potential_dot_dot_acoustic[iglob],sum_terms);
+                }
+            }
         }
     }
 }
 
 // KERNEL 2 - viscoacoustic compute forces kernel
-
 template<int FORWARD_OR_ADJOINT> __global__ void
 Kernel_2_viscoacoustic_impl(const int nb_blocks_to_compute,
         const int* d_ibool,
@@ -154,6 +149,7 @@ Kernel_2_viscoacoustic_impl(const int nb_blocks_to_compute,
         const realw* d_B_newmark,
         realw_p d_sum_forces_old){
 
+/*
     // block-id == number of local element id in phase_ispec array
     int bx = blockIdx.y*gridDim.x+blockIdx.x;
     int tx = threadIdx.x;
@@ -246,35 +242,17 @@ Kernel_2_viscoacoustic_impl(const int nb_blocks_to_compute,
     sum_terms += forces_attenuation;
 
     atomicAdd(&d_potential_dot_dot_acoustic[iglob],sum_terms);
+    */
 }
 
-void Kernel_2_acoustic(int nb_blocks_to_compute, Mesh* mp, int d_iphase,
-        int* d_ibool,
-        realw* d_xix,realw* d_xiz,
-        realw* d_gammax,realw* d_gammaz,
-        realw* d_rhostore,
-        int ATTENUATION_VISCOACOUSTIC,
-        int compute_wavefield_1,
-        int compute_wavefield_2) {
-
-#ifdef ENABLE_VERY_SLOW_ERROR_CHECKING
-    exit_on_cuda_error("before acoustic kernel Kernel 2");
-#endif
-
-    // if the grid can handle the number of blocks, we let it be 1D
-    int blocksize = NGLL2;
-
-    int num_blocks_x, num_blocks_y, nb_field;
-    get_blocks_xy(nb_blocks_to_compute,&num_blocks_x,&num_blocks_y);
-
-    dim3 grid(num_blocks_x,num_blocks_y);
-    dim3 threads(blocksize,1,1);
-
-    // Cuda timing
-    cudaEvent_t start, stop;
-    if (CUDA_TIMING) {
-        start_timing_cuda(&start,&stop);
-    }
+void Kernel_2_acoustic( int nb_blocks_to_compute, Mesh* mp, int d_iphase,
+                        int* d_ibool,
+                        realw* d_xix,realw* d_xiz,
+                        realw* d_gammax,realw* d_gammaz,
+                        realw* d_rhostore,
+                        int ATTENUATION_VISCOACOUSTIC,
+                        int compute_wavefield_1,
+                        int compute_wavefield_2) {
 
     if (compute_wavefield_1 && compute_wavefield_2){
         nb_field=2;
@@ -283,7 +261,7 @@ void Kernel_2_acoustic(int nb_blocks_to_compute, Mesh* mp, int d_iphase,
     }
     if ( ! ATTENUATION_VISCOACOUSTIC){
         if (!compute_wavefield_1 && compute_wavefield_2){
-            Kernel_2_acoustic_impl<3><<<grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
+            Kernel_2_acoustic_impl<3>(nb_blocks_to_compute,
                     d_ibool,
                     mp->d_phase_ispec_inner_acoustic,
                     mp->num_phase_ispec_acoustic,
@@ -298,7 +276,7 @@ void Kernel_2_acoustic(int nb_blocks_to_compute, Mesh* mp, int d_iphase,
                     mp->d_wxgll,
                     d_rhostore);
         } else {
-            Kernel_2_acoustic_impl<1><<<grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
+            Kernel_2_acoustic_impl<1>(nb_blocks_to_compute,
                     d_ibool,
                     mp->d_phase_ispec_inner_acoustic,
                     mp->num_phase_ispec_acoustic,
@@ -315,7 +293,7 @@ void Kernel_2_acoustic(int nb_blocks_to_compute, Mesh* mp, int d_iphase,
         }
     }else{ // ATTENUATION_VISCOACOUSTIC== .true. below
         if (compute_wavefield_1) {
-            Kernel_2_viscoacoustic_impl<1><<<grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
+            Kernel_2_viscoacoustic_impl<1>(nb_blocks_to_compute,
                     d_ibool,
                     mp->d_phase_ispec_inner_acoustic,
                     mp->num_phase_ispec_acoustic,
@@ -333,7 +311,7 @@ void Kernel_2_acoustic(int nb_blocks_to_compute, Mesh* mp, int d_iphase,
                     mp->d_sum_forces_old);
         }
         if (compute_wavefield_2) {
-            Kernel_2_viscoacoustic_impl<3><<<grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
+            Kernel_2_viscoacoustic_impl<3>(nb_blocks_to_compute,
                     d_ibool,
                     mp->d_phase_ispec_inner_acoustic,
                     mp->num_phase_ispec_acoustic,
@@ -351,34 +329,13 @@ void Kernel_2_acoustic(int nb_blocks_to_compute, Mesh* mp, int d_iphase,
                     mp->d_b_sum_forces_old);
         }
     } // ATTENUATION_VISCOACOUSTIC
-
-    // Cuda timing
-    if (CUDA_TIMING) {
-        realw flops,time;
-        stop_timing_cuda(&start,&stop,"Kernel_2_acoustic_impl",&time);
-        // time in seconds
-        time = time / 1000.;
-        flops = 15559 * nb_blocks_to_compute;
-        printf("  performance: %f GFlop/s\n", flops/time * 1.e-9);
-    }
-
-#ifdef ENABLE_VERY_SLOW_ERROR_CHECKING
-    exit_on_cuda_error("kernel Kernel_2");
-#endif
 }
 
 // main compute_forces_acoustic CUDA routine
-
 extern "C"
-void FC_FUNC_(compute_forces_acoustic_cuda,
-        COMPUTE_FORCES_ACOUSTIC_CUDA)(long* Mesh_pointer,
-            int* iphase,
-            int* nspec_outer_acoustic,
-            int* nspec_inner_acoustic,
-            int* ATTENUATION_VISCOACOUSTIC,
-            int* compute_wavefield_1,
-            int* compute_wavefield_2) {
-            TRACE("compute_forces_acoustic_cuda");
+void compute_forces_acoustic_omp( long* Mesh_pointer, int* iphase, int* nspec_outer_acoustic,
+                                  int* nspec_inner_acoustic, int* ATTENUATION_VISCOACOUSTIC,
+                                  int* compute_wavefield_1, int* compute_wavefield_2) {
 
             Mesh* mp = (Mesh*)(*Mesh_pointer); // get Mesh from fortran integer wrapper
             int num_elements;
@@ -387,20 +344,22 @@ void FC_FUNC_(compute_forces_acoustic_cuda,
                 num_elements = *nspec_outer_acoustic;
             else
                 num_elements = *nspec_inner_acoustic;
-            if (num_elements == 0) return;
+            if (num_elements == 0) 
+                return;
 
             // no mesh coloring: uses atomic updates
             Kernel_2_acoustic(num_elements, mp, *iphase,
-                    mp->d_ibool,
-                    mp->d_xix,mp->d_xiz,
-                    mp->d_gammax,mp->d_gammaz,
-                    mp->d_rhostore,
-                    *ATTENUATION_VISCOACOUSTIC,
-                    *compute_wavefield_1,
-                    *compute_wavefield_2);
-        }
+                              mp->d_ibool,
+                              mp->d_xix,mp->d_xiz,
+                              mp->d_gammax,mp->d_gammaz,
+                              mp->d_rhostore,
+                              *ATTENUATION_VISCOACOUSTIC,
+                              *compute_wavefield_1,
+                              *compute_wavefield_2);
+}
+/*
 
-/* KERNEL for enforce free surface */
+// KERNEL for enforce free surface 
 __global__ void enforce_free_surface_cuda_kernel(realw_p potential_acoustic,
         realw_p potential_dot_acoustic,
         realw_p potential_dot_dot_acoustic,
@@ -436,14 +395,8 @@ __global__ void enforce_free_surface_cuda_kernel(realw_p potential_acoustic,
     }
 }
 
-
-/* ----------------------------------------------------------------------------------------------- */
-
 extern "C"
-void FC_FUNC_(acoustic_enforce_free_surf_cuda,
-        ACOUSTIC_ENFORCE_FREE_SURF_CUDA)(long* Mesh_pointer,int* compute_wavefield_1,int* compute_wavefield_2) {
-
-    TRACE("acoustic_enforce_free_surf_cuda");
+void acoustic_enforce_free_surf_cuda(long* Mesh_pointer,int* compute_wavefield_1,int* compute_wavefield_2) {
 
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
 
@@ -482,10 +435,5 @@ void FC_FUNC_(acoustic_enforce_free_surf_cuda,
                 mp->d_ibool,
                 mp->d_ispec_is_acoustic);
     }
-
-#ifdef ENABLE_VERY_SLOW_ERROR_CHECKING
-    exit_on_cuda_error("enforce_free_surface_cuda");
-#endif
 }
-
-
+*/
