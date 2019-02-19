@@ -35,59 +35,55 @@
 
 #include "mesh_constants_cuda.h"
 
+typedef float realw;
+
 // KERNEL 2 - acoustic compute forces kernel
 
 template<int FORWARD_OR_ADJOINT> __global__ void
-Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
-        const int* d_ibool,
-        const int* d_phase_ispec_inner_acoustic,
-        const int num_phase_ispec_acoustic,
-        const int d_iphase,
-        realw_const_p d_potential_acoustic,
-        realw_p d_potential_dot_dot_acoustic,
-        realw_const_p d_b_potential_acoustic,
-        realw_p d_b_potential_dot_dot_acoustic,
-        const realw* d_xix, const realw* d_xiz,
-        const realw* d_gammax,const realw* d_gammaz,
-        realw_const_p d_hprime_xx,
-        realw_const_p d_hprimewgll_xx,
-        realw_const_p d_wxgll,
-        const realw* d_rhostore){
+Kernel_2_acoustic_impl( const int nb_blocks_to_compute,
+                        const int* d_ibool,
+                        const int* d_phase_ispec_inner_acoustic,
+                        const int num_phase_ispec_acoustic,
+                        const int d_iphase,
+                        realw_const_p d_potential_acoustic,
+                        realw_p d_potential_dot_dot_acoustic,
+                        realw_const_p d_b_potential_acoustic,
+                        realw_p d_b_potential_dot_dot_acoustic,
+                        const realw* d_xix, const realw* d_xiz,
+                        const realw* d_gammax,const realw* d_gammaz,
+                        realw_const_p d_hprime_xx,
+                        realw_const_p d_hprimewgll_xx,
+                        realw_const_p d_wxgll,
+                        const realw* d_rhostore) 
+{
 
     for(int bx=0; bx< nb_blocks_to_compute; bx++) {
         for(int tx=0; tx< NGLL2; tx++) {
-
-            realw xixl,xizl,gammaxl,gammazl;
-            realw dpotentialdxl,dpotentialdzl;
-            realw rho_invl_times_jacobianl;
-            realw sum_terms;
-
-            __shared__ realw s_dummy_loc[2*NGLL2];
-            __shared__ realw s_temp1[NGLL2];
-            __shared__ realw s_temp3[NGLL2];
-            __shared__ realw sh_hprime_xx[NGLL2];
-            __shared__ realw sh_hprimewgll_xx[NGLL2];
-            __shared__ realw sh_wxgll[NGLLX];
-
-            if (bx >= nb_blocks_to_compute ) return;
+            //was __shared__
+            realw s_dummy_loc[2*NGLL2];
+            realw s_temp1[NGLL2];
+            realw s_temp3[NGLL2];
+            realw sh_hprime_xx[NGLL2];
+            realw sh_hprimewgll_xx[NGLL2];
+            realw sh_wxgll[NGLLX];
 
             int offset = (d_phase_ispec_inner_acoustic[bx + num_phase_ispec_acoustic*(d_iphase-1)]-1)*NGLL2_PADDED + tx;
-
             int iglob = d_ibool[offset] - 1;
 
             // changing iglob indexing to match fortran row changes fast style
             s_dummy_loc[tx] = d_potential_acoustic[iglob];
-            if (nb_field==2) s_dummy_loc[NGLL2+tx]=d_b_potential_acoustic[iglob];
+            if (nb_field==2) 
+                s_dummy_loc[NGLL2+tx]=d_b_potential_acoustic[iglob];
 
             int J = (tx/NGLLX);
             int I = (tx-J*NGLLX);
 
-            xixl = get_global_cr( &d_xix[offset] );
-            xizl = d_xiz[offset];
-            gammaxl = d_gammax[offset];
-            gammazl = d_gammaz[offset];
+            realw xixl =  d_xix[offset] ;
+            realw xizl = d_xiz[offset];
+            realw gammaxl = d_gammax[offset];
+            realw gammazl = d_gammaz[offset];
 
-            rho_invl_times_jacobianl = 1.f /(d_rhostore[offset] * (xixl*gammazl-gammaxl*xizl));
+            realw rho_invl_times_jacobianl = 1.f /(d_rhostore[offset] * (xixl*gammazl-gammaxl*xizl));
 
             sh_hprime_xx[tx] = d_hprime_xx[tx];
             sh_hprimewgll_xx[tx] = d_hprimewgll_xx[tx];
@@ -96,8 +92,7 @@ Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
                 sh_wxgll[tx] = d_wxgll[tx];
             }
             for (int k=0 ; k < nb_field ; k++) {
-                __syncthreads();
-
+                //__syncthreads();
                 realw temp1l = 0.f;
                 realw temp3l = 0.f;
 
@@ -106,23 +101,22 @@ Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
                     temp3l += s_dummy_loc[NGLL2*k+l*NGLLX+I] * sh_hprime_xx[l*NGLLX+J];
                 }
 
-                dpotentialdxl = xixl*temp1l +  gammaxl*temp3l;
-                dpotentialdzl = xizl*temp1l +  gammazl*temp3l;
+                realw dpotentialdxl = xixl*temp1l + gammaxl*temp3l;
+                realw dpotentialdzl = xizl*temp1l + gammazl*temp3l;
 
-                s_temp1[tx] = sh_wxgll[J]*rho_invl_times_jacobianl  * (dpotentialdxl*xixl  + dpotentialdzl*xizl)  ;
-                s_temp3[tx] = sh_wxgll[I]*rho_invl_times_jacobianl  * (dpotentialdxl*gammaxl + dpotentialdzl*gammazl)  ;
+                s_temp1[tx] = sh_wxgll[J]*rho_invl_times_jacobianl * (dpotentialdxl*xixl    + dpotentialdzl*xizl)  ;
+                s_temp3[tx] = sh_wxgll[I]*rho_invl_times_jacobianl * (dpotentialdxl*gammaxl + dpotentialdzl*gammazl)  ;
 
-                __syncthreads();
-
-                sum_terms = 0.f;
+                //__syncthreads();
+                realw sum_terms = 0.f;
                 for (int l=0;l<NGLLX;l++) {
                     sum_terms -= s_temp1[J*NGLLX+l] * sh_hprimewgll_xx[I*NGLLX+l] + s_temp3[l*NGLLX+I] * sh_hprimewgll_xx[J*NGLLX+l];
                 }
 
                 if (k==0) {
-                    atomicAdd(&d_potential_dot_dot_acoustic[iglob],sum_terms);
+                    d_potential_dot_dot_acoustic[iglob] += sum_terms;
                 } else {
-                    atomicAdd(&d_b_potential_dot_dot_acoustic[iglob],sum_terms);
+                    d_b_potential_dot_dot_acoustic[iglob] += sum_terms;
                 }
             }
         }
@@ -163,12 +157,12 @@ Kernel_2_viscoacoustic_impl(const int nb_blocks_to_compute,
     realw sum_forces_old,forces_attenuation,a_newmark;
     realw e1_acous_load[N_SLS];
 
-    __shared__ realw s_dummy_loc[NGLL2];
-    __shared__ realw s_temp1[NGLL2];
-    __shared__ realw s_temp3[NGLL2];
-    __shared__ realw sh_hprime_xx[NGLL2];
-    __shared__ realw sh_hprimewgll_xx[NGLL2];
-    __shared__ realw sh_wxgll[NGLLX];
+    realw s_dummy_loc[NGLL2];
+    realw s_temp1[NGLL2];
+    realw s_temp3[NGLL2];
+    realw sh_hprime_xx[NGLL2];
+    realw sh_hprimewgll_xx[NGLL2];
+    realw sh_wxgll[NGLLX];
 
     if (bx >= nb_blocks_to_compute ) return;
 
@@ -183,7 +177,7 @@ Kernel_2_viscoacoustic_impl(const int nb_blocks_to_compute,
     int J = (tx/NGLLX);
     I = (tx-J*NGLLX);
 
-    xixl = get_global_cr( &d_xix[offset] );
+    xixl = d_xix[offset];
     xizl = d_xiz[offset];
     gammaxl = d_gammax[offset];
     gammazl = d_gammaz[offset];
