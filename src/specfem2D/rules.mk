@@ -248,6 +248,12 @@ JPEGLIB_OBJECTS = \
 
 specfem2D_OBJECTS += $(JPEGLIB_OBJECTS)
 
+##
+## OMP files
+##
+omp_specfem2D_OBJECTS = \
+	$O/compute_forces_acoustic_omp.cpp.o \
+	$(EMPTY_MACRO)
 
 ###
 ### CUDA
@@ -280,6 +286,9 @@ cuda_specfem2D_STUBS = \
 cuda_specfem2D_DEVICE_OBJ = \
 	$O/cuda_device_obj.o \
 	$(EMPTY_MACRO)
+
+#TODO: add an option for this
+specfem2D_OBJECTS += $(omp_specfem2D_OBJECTS)
 
 ifeq ($(CUDA),yes)
 specfem2D_OBJECTS += $(cuda_specfem2D_OBJECTS)
@@ -327,13 +336,10 @@ ${E}/xspecfem2D: $(specfem2D_OBJECTS) $(specfem2D_SHARED_OBJECTS)
 	@echo ""
 	@echo "building xspecfem2D without CUDA support"
 	@echo ""
-	$(FCLINK) -o ${E}/xspecfem2D $(specfem2D_OBJECTS) $(specfem2D_SHARED_OBJECTS) $(MPILIBS)
+	$(FCLINK) -o ${E}/xspecfem2D $(specfem2D_OBJECTS) $(specfem2D_SHARED_OBJECTS) $(MPILIBS) -lstdc++
 	@echo ""
 
 endif
-
-
-
 
 #######################################
 
@@ -352,6 +358,12 @@ $O/initialize_simulation.spec.o: ${SETUP}/version.fh
 ##
 ## object files
 ##
+
+##
+## OMP files
+##
+$O/%.cpp.o: $S/%.cpp 
+	${CPP} ${CPPFLAGS} -c -o $@ $<
 
 ####
 #### rule to build each .o file below

@@ -72,52 +72,41 @@
 
   if (nelem_acoustic_surface > 0) then
     !  enforces free surface (zeroes potentials at free surface)
-    call acoustic_enforce_free_surf_cuda(Mesh_pointer,compute_wavefield_1,compute_wavefield_2)
+    !call acoustic_enforce_free_surf_cuda(Mesh_pointer,compute_wavefield_1,compute_wavefield_2)
+    call acoustic_enforce_free_surf_omp(Mesh_pointer,compute_wavefield_1,compute_wavefield_2)
   endif
 
   ! distinguishes two runs: for elements on MPI interfaces, and elements within the partitions
   do iphase = 1,2
-    ! acoustic pressure term
-    ! includes code for SIMULATION_TYPE==3
-    call compute_forces_acoustic_cuda(Mesh_pointer, iphase, &
+    !call compute_forces_acoustic_cuda(Mesh_pointer, iphase, &
+    call compute_forces_acoustic_omp(Mesh_pointer, iphase, &
                                       nspec_outer_acoustic, nspec_inner_acoustic,ATTENUATION_VISCOACOUSTIC, &
                                       compute_wavefield_1,compute_wavefield_2)
-
-    ! computes additional contributions
     if (iphase == 1) then
-      ! Stacey absorbing boundary conditions
       if (STACEY_ABSORBING_CONDITIONS) then
         call compute_stacey_acoustic_GPU(iphase,compute_wavefield_1,compute_wavefield_2)
       endif
 
-      ! elastic coupling
       if (any_elastic) then
         if (num_fluid_solid_edges > 0) then
-          ! on GPU
-          call compute_coupling_ac_el_cuda(Mesh_pointer,iphase, &
-                                           num_fluid_solid_edges)
+          call compute_coupling_ac_el_cuda(Mesh_pointer,iphase, num_fluid_solid_edges)
         endif
       endif
 
-      ! poroelastic coupling
       if (any_poroelastic) then
             call stop_the_code('poroelastic not implemented yet in GPU mode')
       endif
 
-      ! sources
       call compute_add_sources_acoustic_GPU(iphase,compute_wavefield_1,compute_wavefield_2)
-
     endif
 
     ! assemble all the contributions between slices using MPI
     if (ninterface_acoustic > 0) then
-
       if (iphase == 1) then
         if (compute_wavefield_1) then
           ! sends potential_dot_dot_acoustic values to corresponding MPI interface neighbors (non-blocking)
-          call transfer_boun_pot_from_device(Mesh_pointer, &
-                                             buffer_send_scalar_gpu, &
-                                             1) ! -- 1 == fwd accel
+          ! 1 == fwd accel
+          call transfer_boun_pot_from_device(Mesh_pointer, buffer_send_scalar_gpu, 1)
 
           call assemble_MPI_scalar_send_cuda(NPROC, &
                             buffer_send_scalar_gpu,buffer_recv_scalar_gpu, &
@@ -128,9 +117,8 @@
         endif
         ! adjoint simulations
         if (compute_wavefield_2) then
-          call transfer_boun_pot_from_device(Mesh_pointer, &
-                                             b_buffer_send_scalar_gpu, &
-                                             3) ! -- 3 == adjoint b_accel
+          ! 3 == adjoint b_accel
+          call transfer_boun_pot_from_device(Mesh_pointer, b_buffer_send_scalar_gpu, 3) 
 
           call assemble_MPI_scalar_send_cuda(NPROC, &
                             b_buffer_send_scalar_gpu,b_buffer_recv_scalar_gpu, &
@@ -139,7 +127,6 @@
                             my_neighbors, &
                             b_request_send_recv_scalar_gpu,ninterface_acoustic,inum_interfaces_acoustic)
         endif
-
       else
         if ( compute_wavefield_1) &
           ! waits for send/receive requests to be completed and assembles values
@@ -150,9 +137,6 @@
                           max_nibool_interfaces_ext_mesh, &
                           request_send_recv_scalar_gpu, &
                           1,ninterface_acoustic,inum_interfaces_acoustic)
-
-
-
         ! adjoint simulations
         if (compute_wavefield_2) then
           call assemble_MPI_scalar_write_cuda(NPROC, &
@@ -164,25 +148,20 @@
                           3,ninterface_acoustic,inum_interfaces_acoustic)
         endif
       endif !iphase
-
     endif !interface_acoustic
-
   enddo !iphase
 
   ! divides pressure with mass matrix
-  ! corrector:
-  ! updates the chi_dot term which requires chi_dot_dot(t+delta)
+  ! corrector: updates the chi_dot term which requires chi_dot_dot(t+delta)
   call kernel_3_acoustic_cuda(Mesh_pointer,deltatover2f,b_deltatover2f,compute_wavefield_1,compute_wavefield_2)
 
   ! enforces free surface (zeroes potentials at free surface)
-  call acoustic_enforce_free_surf_cuda(Mesh_pointer,compute_wavefield_1,compute_wavefield_2)
+  !call acoustic_enforce_free_surf_cuda(Mesh_pointer,compute_wavefield_1,compute_wavefield_2)
+  call acoustic_enforce_free_surf_omp(Mesh_pointer,compute_wavefield_1,compute_wavefield_2)
 
   end subroutine compute_forces_viscoacoustic_GPU
 
-!
 !---------------------------------------------------------------------------------------------
-!
-
 ! for acoustic solver on GPU
 
   subroutine compute_stacey_acoustic_GPU(iphase,compute_wavefield_1,compute_wavefield_2)

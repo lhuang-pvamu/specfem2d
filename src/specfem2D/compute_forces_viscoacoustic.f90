@@ -95,7 +95,7 @@
   integer :: num_elements,ispec_p
 
   integer :: i_sls
-
+ 
   ! choses inner/outer elements
   if (iphase == 1) then
     num_elements = nspec_outer_acoustic
@@ -114,6 +114,8 @@
 
     ! gets local potential for element
     rhol = density(1,kmato(ispec))
+
+    !$omp parallel do collapse(2) private(i,j, iglob) firstprivate(rhol)
     do j = 1,NGLLZ
       do i = 1,NGLLX
         iglob = ibool(i,j,ispec)
@@ -138,9 +140,11 @@
 
       enddo
     enddo
+    !$omp end parallel do
 
     ! first double loop over GLL points to compute and store gradients
     call mxm_2comp_singleA(dux_dxi,dux_dgamma,potential_elem,hprime_xx,hprime_zz)
+
 
     ! AXISYM case overwrites dux_dxi
     if (AXISYM) then
@@ -413,7 +417,6 @@
 !! DK DK QUENTIN visco end
 
   enddo ! end of loop over all spectral elements
-
   contains
 
 !---------------------------------------------------------------------------------------
