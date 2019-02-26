@@ -92,15 +92,10 @@ extern realw_texture d_wxgll_xx_tex;
 //                for optimal register usage and compiler optimizations
 //
 
-/* ----------------------------------------------------------------------------------------------- */
-
 // KERNEL 2 - acoustic compute forces kernel
-
-/* ----------------------------------------------------------------------------------------------- */
 
 template<int FORWARD_OR_ADJOINT> __global__ void
 #ifdef USE_LAUNCH_BOUNDS
-// adds compiler specification
 __launch_bounds__(NGLL2_PADDED,LAUNCH_MIN_BLOCKS_ACOUSTIC)
 #endif
 Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
@@ -122,18 +117,9 @@ Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
 
   // block-id == number of local element id in phase_ispec array
   int bx = blockIdx.y*gridDim.x+blockIdx.x;
-
   // thread-id == GLL node id
-  // note: use only NGLL^2 = 25 active threads, plus 7 inactive/ghost threads,
-  //       because we used memory padding from NGLL^2 = 25 to 32 to get coalescent memory accesses;
-  //       to avoid execution branching and the need of registers to store an active state variable,
-  //       the thread ids are put in valid range
   int tx = threadIdx.x;
 
-  int I,J;
-  int iglob,offset;
-
-  realw temp1l,temp3l;
   realw xixl,xizl,gammaxl,gammazl;
 
   realw dpotentialdxl,dpotentialdzl;
@@ -150,41 +136,11 @@ Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
   __shared__ realw sh_hprimewgll_xx[NGLL2];
   __shared__ realw sh_wxgll[NGLLX];
 
-
-
-// arithmetic intensity: ratio of number-of-arithmetic-operations / number-of-bytes-accessed-on-DRAM
-//
-// hand-counts on floating-point operations: counts addition/subtraction/multiplication/division
-//                                           no counts for operations on indices in for-loops (compiler will likely unrool loops)
-//
-//                                           counts accesses to global memory, but no shared memory or register loads/stores
-//                                           float has 4 bytes
-
-//         counts floating-point operations (FLOP) per thread
-//         counts global memory accesses in bytes (BYTES) per block
-// 2 FLOP
-//
-// 0 BYTES
-
-  // checks if anything to do
   if (bx >= nb_blocks_to_compute ) return;
 
-// counts:
-// + 1 FLOP
-//
-// + 0 BYTE
+  int offset = (d_phase_ispec_inner_acoustic[bx + num_phase_ispec_acoustic*(d_iphase-1)]-1)*NGLL2_PADDED + tx;
 
-  // local padded index
-  offset = (d_phase_ispec_inner_acoustic[bx + num_phase_ispec_acoustic*(d_iphase-1)]-1)*NGLL2_PADDED + tx;
-
-  // global index
-  iglob = d_ibool[offset] - 1;
-
-
-// counts:
-// + 7 FLOP
-//
-// + 2 float * 32 threads = 256 BYTE
+  int iglob = d_ibool[offset] - 1;
 
 #ifdef USE_TEXTURES_FIELDS
   s_dummy_loc[tx] = texfetch_potential<FORWARD_OR_ADJOINT>(iglob);
@@ -195,26 +151,9 @@ Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
   if (nb_field==2) s_dummy_loc[NGLL2+tx]=d_b_potential_acoustic[iglob];
 #endif
 
+  int J = (tx/NGLLX);
+  int I = (tx-J*NGLLX);
 
-// counts:
-// + 0 FLOP
-//
-// + 1 float * 25 threads = 100 BYTE
-
-  // local index
-  J = (tx/NGLLX);
-  I = (tx-J*NGLLX);
-
-// counts:
-// + 3 FLOP
-//
-// + 0 BYTES
-
-  // note: loads mesh values here to give compiler possibility to overlap memory fetches with some computations;
-  //       arguments defined as realw* instead of const realw* __restrict__ to avoid that the compiler
-  //       loads all memory by texture loads (arrays accesses are coalescent, thus no need for texture reads)
-  //
-  // calculates laplacian
   xixl = get_global_cr( &d_xix[offset] );
   xizl = d_xiz[offset];
   gammaxl = d_gammax[offset];
@@ -222,122 +161,53 @@ Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
 
   rho_invl_times_jacobianl = 1.f /(d_rhostore[offset] * (xixl*gammazl-gammaxl*xizl));
 
-// counts:
-// + 5 FLOP
-//
-// + 5 float * 32 threads = 160 BYTE
-
-  // loads hprime into shared memory
-
 #ifdef USE_TEXTURES_CONSTANTS
   sh_hprime_xx[tx] = tex1Dfetch(d_hprime_xx_tex,tx);
 #else
   sh_hprime_xx[tx] = d_hprime_xx[tx];
 #endif
-  // loads hprimewgll into shared memory
   sh_hprimewgll_xx[tx] = d_hprimewgll_xx[tx];
 
   if (threadIdx.x < NGLLX){
 #ifdef USE_TEXTURES_CONSTANTS
     sh_wxgll[tx] = tex1Dfetch(d_wxgll_xx_tex,tx);
 #else
-    // changing iglob indexing to match fortran row changes fast style
     sh_wxgll[tx] = d_wxgll[tx];
 #endif
   }
-
-
-// counts:
-// + 0 FLOP
-//
-// + 2 * 1 float * 25 threads = 200 BYTE
-
   for (int k=0 ; k < nb_field ; k++) {
-
-    // synchronize all the threads (one thread for each of the NGLL grid points of the
-    // current spectral element) because we need the whole element to be ready in order
-    // to be able to compute the matrix products along cut planes of the 3D element below
     __syncthreads();
 
-    // computes first matrix product
-    temp1l = 0.f;
-    temp3l = 0.f;
+    realw temp1l = 0.f;
+    realw temp3l = 0.f;
 
     for (int l=0;l<NGLLX;l++) {
-
-      //assumes that hprime_xx = hprime_yy = hprime_zz
-      // 1. cut-plane along xi-direction
       temp1l += s_dummy_loc[NGLL2*k+J*NGLLX+l] * sh_hprime_xx[l*NGLLX+I];
-      // 3. cut-plane along gamma-direction
       temp3l += s_dummy_loc[NGLL2*k+l*NGLLX+I] * sh_hprime_xx[l*NGLLX+J];
     }
 
-// counts:
-// + NGLLX * 2 * 6 FLOP = 60 FLOP
-//
-// + 0 BYTE
-
-    // compute derivatives of ux, uy and uz with respect to x, y and z
-    // derivatives of potential
     dpotentialdxl = xixl*temp1l +  gammaxl*temp3l;
     dpotentialdzl = xizl*temp1l +  gammazl*temp3l;
 
-// counts:
-// + 2 * 3 FLOP = 6 FLOP
-//
-// + 0 BYTE
-
-    // form the dot product with the test vector
     s_temp1[tx] = sh_wxgll[J]*rho_invl_times_jacobianl  * (dpotentialdxl*xixl  + dpotentialdzl*xizl)  ;
     s_temp3[tx] = sh_wxgll[I]*rho_invl_times_jacobianl  * (dpotentialdxl*gammaxl + dpotentialdzl*gammazl)  ;
 
-// counts:
-// + 2 * 6 FLOP = 12 FLOP
-//
-// + 2 BYTE
-
-    // synchronize all the threads (one thread for each of the NGLL grid points of the
-    // current spectral element) because we need the whole element to be ready in order
-    // to be able to compute the matrix products along cut planes of the 3D element below
     __syncthreads();
 
     sum_terms = 0.f;
     for (int l=0;l<NGLLX;l++) {
-      //assumes hprimewgll_xx = hprimewgll_zz
       sum_terms -= s_temp1[J*NGLLX+l] * sh_hprimewgll_xx[I*NGLLX+l] + s_temp3[l*NGLLX+I] * sh_hprimewgll_xx[J*NGLLX+l];
     }
 
-// counts:
-// + NGLLX * 11 FLOP = 55 FLOP
-//
-// + 0 BYTE
-
-    // assembles potential array
     if (k==0) {
       atomicAdd(&d_potential_dot_dot_acoustic[iglob],sum_terms);
     } else {
       atomicAdd(&d_b_potential_dot_dot_acoustic[iglob],sum_terms);
     }
-// counts:
-// + 1 FLOP
-//
-// + 1 float * 25 threads = 100 BYTE
-
-// -----------------
-// total of: 149 FLOP per thread
-//           ~ 32 * 149 = 4768 FLOP per block
-//
-//           818 BYTE DRAM accesses per block
-//
-//           -> arithmetic intensity: 4768 FLOP / 818 BYTES ~ 5.83 FLOP/BYTE (hand-count)
   }
 }
 
-/* ----------------------------------------------------------------------------------------------- */
-
 // KERNEL 2 - viscoacoustic compute forces kernel
-
-/* ----------------------------------------------------------------------------------------------- */
 
 template<int FORWARD_OR_ADJOINT> __global__ void
 #ifdef USE_LAUNCH_BOUNDS
@@ -365,8 +235,7 @@ Kernel_2_viscoacoustic_impl(const int nb_blocks_to_compute,
   // block-id == number of local element id in phase_ispec array
   int bx = blockIdx.y*gridDim.x+blockIdx.x;
   int tx = threadIdx.x;
-  int I,J;
-  int iglob,offset,offset_align,i_sls;
+  int iglob,offset,offset_align;
 
   realw temp1l,temp3l;
   realw xixl,xizl,gammaxl,gammazl;
@@ -385,7 +254,7 @@ Kernel_2_viscoacoustic_impl(const int nb_blocks_to_compute,
 
   if (bx >= nb_blocks_to_compute ) return;
 
-  I =d_phase_ispec_inner_acoustic[bx + num_phase_ispec_acoustic*(d_iphase-1)]-1;
+  int I =d_phase_ispec_inner_acoustic[bx + num_phase_ispec_acoustic*(d_iphase-1)]-1;
   offset = I*NGLL2_PADDED + tx;
   offset_align = I*NGLL2 + tx;
   iglob = d_ibool[offset] - 1;
@@ -397,7 +266,7 @@ Kernel_2_viscoacoustic_impl(const int nb_blocks_to_compute,
 #endif
 
   // local index
-  J = (tx/NGLLX);
+  int J = (tx/NGLLX);
   I = (tx-J*NGLLX);
 
   xixl = get_global_cr( &d_xix[offset] );
@@ -407,7 +276,8 @@ Kernel_2_viscoacoustic_impl(const int nb_blocks_to_compute,
 
   rho_invl_times_jacobianl = 1.f /(d_rhostore[offset] * (xixl*gammazl-gammaxl*xizl));
 
-  for (i_sls=0;i_sls<N_SLS;i_sls++)  e1_acous_load[i_sls] = d_e1_acous[N_SLS*offset_align+i_sls];
+  for (int i_sls=0;i_sls<N_SLS;i_sls++)  
+      e1_acous_load[i_sls] = d_e1_acous[N_SLS*offset_align+i_sls];
 
 #ifdef USE_TEXTURES_CONSTANTS
   sh_hprime_xx[tx] = tex1Dfetch(d_hprime_xx_tex,tx);
@@ -455,7 +325,7 @@ Kernel_2_viscoacoustic_impl(const int nb_blocks_to_compute,
   sum_forces_old = d_sum_forces_old[offset_align];
   forces_attenuation = 0.f;
 
-  for (i_sls=0;i_sls<N_SLS;i_sls++){
+  for (int i_sls=0;i_sls<N_SLS;i_sls++){
     a_newmark = d_A_newmark[N_SLS * offset_align + i_sls];
     e1_acous_load[i_sls] = a_newmark * a_newmark * e1_acous_load[i_sls] + d_B_newmark[N_SLS * offset_align + i_sls] * (sum_terms + a_newmark * sum_forces_old);
     forces_attenuation += e1_acous_load[i_sls];
@@ -467,11 +337,6 @@ Kernel_2_viscoacoustic_impl(const int nb_blocks_to_compute,
 
   atomicAdd(&d_potential_dot_dot_acoustic[iglob],sum_terms);
 }
-
-
-
-
-/* ----------------------------------------------------------------------------------------------- */
 
 void Kernel_2_acoustic(int nb_blocks_to_compute, Mesh* mp, int d_iphase,
                        int* d_ibool,
@@ -507,8 +372,22 @@ void Kernel_2_acoustic(int nb_blocks_to_compute, Mesh* mp, int d_iphase,
     nb_field=1;
   }
   if ( ! ATTENUATION_VISCOACOUSTIC){
-    if (nb_field==2){
-      // forward wavefields -> FORWARD_OR_ADJOINT == 1
+    if (!compute_wavefield_1 && compute_wavefield_2){
+      Kernel_2_acoustic_impl<3><<<grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
+                                                                       d_ibool,
+                                                                       mp->d_phase_ispec_inner_acoustic,
+                                                                       mp->num_phase_ispec_acoustic,
+                                                                       d_iphase,
+                                                                       mp->d_b_potential_acoustic, mp->d_b_potential_dot_dot_acoustic,
+                                                                       mp->d_b_potential_acoustic,mp->d_b_potential_dot_dot_acoustic,
+                                                                       nb_field,
+                                                                       d_xix, d_xiz,
+                                                                       d_gammax, d_gammaz,
+                                                                       mp->d_hprime_xx,
+                                                                       mp->d_hprimewgll_xx,
+                                                                       mp->d_wxgll,
+                                                                       d_rhostore);
+    } else {
       Kernel_2_acoustic_impl<1><<<grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
                                                                        d_ibool,
                                                                        mp->d_phase_ispec_inner_acoustic,
@@ -523,43 +402,7 @@ void Kernel_2_acoustic(int nb_blocks_to_compute, Mesh* mp, int d_iphase,
                                                                        mp->d_hprimewgll_xx,
                                                                        mp->d_wxgll,
                                                                        d_rhostore);
-    }else{ // nb_field==1
-      if (compute_wavefield_1){
-        // forward wavefields -> FORWARD_OR_ADJOINT == 1
-        Kernel_2_acoustic_impl<1><<<grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
-                                                                         d_ibool,
-                                                                         mp->d_phase_ispec_inner_acoustic,
-                                                                         mp->num_phase_ispec_acoustic,
-                                                                         d_iphase,
-                                                                         mp->d_potential_acoustic, mp->d_potential_dot_dot_acoustic,
-                                                                         mp->d_b_potential_acoustic,mp->d_b_potential_dot_dot_acoustic,
-                                                                         nb_field,
-                                                                         d_xix, d_xiz,
-                                                                         d_gammax, d_gammaz,
-                                                                         mp->d_hprime_xx,
-                                                                         mp->d_hprimewgll_xx,
-                                                                         mp->d_wxgll,
-                                                                         d_rhostore);
-      }
-      if (compute_wavefield_2){
-        // this run only happens with UNDO_ATTENUATION_AND_OR_PML on
-        // adjoint wavefields -> FORWARD_OR_ADJOINT == 3
-        Kernel_2_acoustic_impl<3><<<grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
-                                                                         d_ibool,
-                                                                         mp->d_phase_ispec_inner_acoustic,
-                                                                         mp->num_phase_ispec_acoustic,
-                                                                         d_iphase,
-                                                                         mp->d_b_potential_acoustic, mp->d_b_potential_dot_dot_acoustic,
-                                                                         mp->d_b_potential_acoustic,mp->d_b_potential_dot_dot_acoustic,
-                                                                         nb_field,
-                                                                         d_xix, d_xiz,
-                                                                         d_gammax, d_gammaz,
-                                                                         mp->d_hprime_xx,
-                                                                         mp->d_hprimewgll_xx,
-                                                                         mp->d_wxgll,
-                                                                         d_rhostore);
-      } //compute_wavefield_1
-    } //nb_field
+    }
   }else{ // ATTENUATION_VISCOACOUSTIC== .true. below
     if (compute_wavefield_1) {
       Kernel_2_viscoacoustic_impl<1><<<grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
@@ -599,8 +442,6 @@ void Kernel_2_acoustic(int nb_blocks_to_compute, Mesh* mp, int d_iphase,
     }
   } // ATTENUATION_VISCOACOUSTIC
 
-
-
   // Cuda timing
   if (CUDA_TIMING) {
     realw flops,time;
@@ -616,11 +457,7 @@ void Kernel_2_acoustic(int nb_blocks_to_compute, Mesh* mp, int d_iphase,
 #endif
 }
 
-/* ----------------------------------------------------------------------------------------------- */
-
 // main compute_forces_acoustic CUDA routine
-
-/* ----------------------------------------------------------------------------------------------- */
 
 extern "C"
 void FC_FUNC_(compute_forces_acoustic_cuda,
@@ -653,15 +490,7 @@ void FC_FUNC_(compute_forces_acoustic_cuda,
                     *compute_wavefield_2);
 }
 
-
-
-/* ----------------------------------------------------------------------------------------------- */
-
 /* KERNEL for enforce free surface */
-
-/* ----------------------------------------------------------------------------------------------- */
-
-
 __global__ void enforce_free_surface_cuda_kernel(realw_p potential_acoustic,
                                                  realw_p potential_dot_acoustic,
                                                  realw_p potential_dot_dot_acoustic,
