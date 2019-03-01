@@ -33,16 +33,11 @@
 !========================================================================
 */
 
-#include "mesh_constants_cuda.h"
+#include "mesh_constants_omp.h"
 
-
-/* ----------------------------------------------------------------------------------------------- */
 
 // acoustic sources
-
-/* ----------------------------------------------------------------------------------------------- */
-
-__global__ void compute_add_sources_acoustic_kernel(realw* potential_dot_dot_acoustic,
+void compute_add_sources_acoustic_kernel(realw* potential_dot_dot_acoustic,
                                                     int* d_ibool,
                                                     realw* sourcearrays,
                                                     realw* source_time_function,
@@ -83,12 +78,8 @@ __global__ void compute_add_sources_acoustic_kernel(realw* potential_dot_dot_aco
 /* ----------------------------------------------------------------------------------------------- */
 
 extern "C"
-void FC_FUNC_(compute_add_sources_ac_cuda,
-              COMPUTE_ADD_SOURCES_AC_CUDA)(long* Mesh_pointer,
-                                           int* iphasef,
-                                           int * itf) {
-
-  TRACE("compute_add_sources_ac_cuda");
+void compute_add_sources_ac_cuda(long* Mesh_pointer, int* iphasef, int * itf)
+{
 
   Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
 
@@ -108,15 +99,16 @@ void FC_FUNC_(compute_add_sources_ac_cuda,
 
   int it = *itf - 1;
 
-  compute_add_sources_acoustic_kernel<<<grid,threads,0,mp->compute_stream>>>(mp->d_potential_dot_dot_acoustic,
-                                                                              mp->d_ibool,
-                                                                              mp->d_sourcearrays,
-                                                                              mp->d_source_time_function,
-                                                                              mp->myrank,
-                                                                              mp->d_ispec_selected_source,
-                                                                              mp->d_ispec_is_acoustic,
-                                                                              mp->d_kappastore,
-                                                                              it,mp->nsources_local);
+  //TODO: Add loop here
+  compute_add_sources_acoustic_kernel( mp->d_potential_dot_dot_acoustic,
+                                       mp->d_ibool,
+                                       mp->d_sourcearrays,
+                                       mp->d_source_time_function,
+                                       mp->myrank,
+                                       mp->d_ispec_selected_source,
+                                       mp->d_ispec_is_acoustic,
+                                       mp->d_kappastore,
+                                       it,mp->nsources_local);
 
   // print_CUDA_error_if_any(cudaStreamSynchronize(mp->compute_stream),37);
 
@@ -129,12 +121,8 @@ void FC_FUNC_(compute_add_sources_ac_cuda,
 /* ----------------------------------------------------------------------------------------------- */
 
 extern "C"
-void FC_FUNC_(compute_add_sources_ac_s3_cuda,
-              COMPUTE_ADD_SOURCES_AC_s3_CUDA)(long* Mesh_pointer,
-                                              int* iphasef,
-                                              int* itf) {
-
-  TRACE("compute_add_sources_ac_s3_cuda");
+void compute_add_sources_ac_s3_cuda(long* Mesh_pointer, int* iphasef, int* itf) 
+{
 
   Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
 
@@ -153,7 +141,8 @@ void FC_FUNC_(compute_add_sources_ac_s3_cuda,
 
   int it = *itf - 1;
 
-  compute_add_sources_acoustic_kernel<<<grid,threads,0,mp->compute_stream>>>(mp->d_b_potential_dot_dot_acoustic,
+  //TODO: Add loop here
+  compute_add_sources_acoustic_kernel(mp->d_b_potential_dot_dot_acoustic,
                                                                               mp->d_ibool,
                                                                               mp->d_sourcearrays,
                                                                               mp->d_source_time_function,
@@ -171,25 +160,19 @@ void FC_FUNC_(compute_add_sources_ac_s3_cuda,
 #endif
 }
 
-
-/* ----------------------------------------------------------------------------------------------- */
-
 // acoustic adjoint sources
-
-/* ----------------------------------------------------------------------------------------------- */
-
-__global__ void add_sources_ac_SIM_TYPE_2_OR_3_kernel(realw* potential_dot_dot_acoustic,
-                                                      realw* source_adjointe,
-                                                      realw* xir_store,
-                                                      realw* gammar_store,
-                                                      int* d_ibool,
-                                                      int* ispec_is_acoustic,
-                                                      int* ispec_selected_rec_loc,
-                                                      int it,
-                                                      int nadj_rec_local,
-                                                      realw* kappastore,
-                                                      int NSTEP ) {
-
+void add_sources_ac_SIM_TYPE_2_OR_3_kernel( realw* potential_dot_dot_acoustic,
+                                            realw* source_adjointe,
+                                            realw* xir_store,
+                                            realw* gammar_store,
+                                            int* d_ibool,
+                                            int* ispec_is_acoustic,
+                                            int* ispec_selected_rec_loc,
+                                            int it,
+                                            int nadj_rec_local,
+                                            realw* kappastore,
+                                            int NSTEP ) 
+{
   int irec_local = blockIdx.x + gridDim.x*blockIdx.y;
 
   // because of grid shape, irec_local can be too big
@@ -209,14 +192,6 @@ __global__ void add_sources_ac_SIM_TYPE_2_OR_3_kernel(realw* potential_dot_dot_a
       realw  gammar = gammar_store[INDEX2(nadj_rec_local,irec_local,j)];
       realw  source_adj = source_adjointe[INDEX3(nadj_rec_local,NSTEP,irec_local,it,0)];
 
-
-      // beware, for acoustic medium, a pressure source would be taking the negative
-      // and divide by Kappa of the fluid;
-      // this would have to be done when constructing the adjoint source.
-      //
-      //          the idea is to have e.g. a pressure source, where all 3 components would be the same
-
-
       realw stf = source_adj * gammar * xir / kappal ;
 
       atomicAdd(&potential_dot_dot_acoustic[iglob],stf);
@@ -228,14 +203,12 @@ __global__ void add_sources_ac_SIM_TYPE_2_OR_3_kernel(realw* potential_dot_dot_a
 
 
 extern "C"
-void FC_FUNC_(add_sources_ac_sim_2_or_3_cuda,
-              ADD_SOURCES_AC_SIM_2_OR_3_CUDA)(long* Mesh_pointer,
-                                               int* iphasef,
-                                               int* it,
-                                               int* nadj_rec_local,
-                                               int* NSTEP) {
-
-  TRACE("add_sources_ac_sim_2_or_3_cuda");
+void add_sources_ac_sim_2_or_3_cuda(long* Mesh_pointer,
+                                    int* iphasef,
+                                    int* it,
+                                    int* nadj_rec_local,
+                                    int* NSTEP)
+{
 
   Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
 
@@ -255,21 +228,18 @@ void FC_FUNC_(add_sources_ac_sim_2_or_3_cuda,
 
   int it_index = (*it) - 1;
 
+  //TODO: Add loop here
   // launches cuda kernel for acoustic adjoint sources
-  add_sources_ac_SIM_TYPE_2_OR_3_kernel<<<grid,threads,0,mp->compute_stream>>>(mp->d_potential_dot_dot_acoustic,
-                                                                                mp->d_source_adjointe,
-                                                                                mp->d_xir_store_loc,
-                                                                                mp->d_gammar_store_loc,
-                                                                                mp->d_ibool,
-                                                                                mp->d_ispec_is_acoustic,
-                                                                                mp->d_ispec_selected_rec_loc,
-                                                                                it_index,
-                                                                                mp->nadj_rec_local,
-                                                                                mp->d_kappastore,
-                                                                                *NSTEP);
+  add_sources_ac_SIM_TYPE_2_OR_3_kernel( mp->d_potential_dot_dot_acoustic,
+                                         mp->d_source_adjointe,
+                                         mp->d_xir_store_loc,
+                                         mp->d_gammar_store_loc,
+                                         mp->d_ibool,
+                                         mp->d_ispec_is_acoustic,
+                                         mp->d_ispec_selected_rec_loc,
+                                         it_index,
+                                         mp->nadj_rec_local,
+                                         mp->d_kappastore,
+                                         *NSTEP);
 
-//  print_CUDA_error_if_any(cudaStreamSynchronize(mp->compute_stream),38);
-#ifdef ENABLE_VERY_SLOW_ERROR_CHECKING
-  exit_on_cuda_error("add_sources_acoustic_SIM_TYPE_2_OR_3_kernel");
-#endif
 }
