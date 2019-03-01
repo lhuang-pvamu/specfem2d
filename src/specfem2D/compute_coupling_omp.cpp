@@ -36,8 +36,6 @@
 #include "mesh_constants_omp.h"
 
 
-// ACOUSTIC - ELASTIC coupling
-
 void
 compute_coupling_acoustic_el_kernel( realw* displ,
                                      realw* potential_dot_dot_acoustic,
@@ -165,7 +163,6 @@ void compute_coupling_el_ac_omp( long* Mesh_pointer,
     get_blocks_xy(num_coupling_ac_el_faces,&num_blocks_x,&num_blocks_y);
     dim3 grid(num_blocks_x,num_blocks_y);
     dim3 threads(blocksize,1,1);
-    // launches GPU kernel
     // Add OMP For loop
     compute_coupling_elastic_ac_kernel( mp->d_potential_dot_dot_acoustic,
                                         mp->d_accel,

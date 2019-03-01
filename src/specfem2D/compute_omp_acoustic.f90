@@ -72,12 +72,14 @@
 
   if (nelem_acoustic_surface > 0) then
     !  enforces free surface (zeroes potentials at free surface)
-    call acoustic_enforce_free_surf_cuda(Mesh_pointer,compute_wavefield_1,compute_wavefield_2)
+    !call acoustic_enforce_free_surf_cuda(Mesh_pointer,compute_wavefield_1,compute_wavefield_2)
+    call acoustic_enforce_free_surf_omp(Mesh_pointer,compute_wavefield_1,compute_wavefield_2)
   endif
 
   ! distinguishes two runs: for elements on MPI interfaces, and elements within the partitions
   do iphase = 1,2
-    call compute_forces_acoustic_cuda(Mesh_pointer, iphase, &
+    !call compute_forces_acoustic_cuda(Mesh_pointer, iphase, &
+    call compute_forces_acoustic_omp(Mesh_pointer, iphase, &
                                       nspec_outer_acoustic, nspec_inner_acoustic,ATTENUATION_VISCOACOUSTIC, &
                                       compute_wavefield_1,compute_wavefield_2)
     if (iphase == 1) then
@@ -154,7 +156,8 @@
   call kernel_3_acoustic_cuda(Mesh_pointer,deltatover2f,b_deltatover2f,compute_wavefield_1,compute_wavefield_2)
 
   ! enforces free surface (zeroes potentials at free surface)
-  call acoustic_enforce_free_surf_cuda(Mesh_pointer,compute_wavefield_1,compute_wavefield_2)
+  !call acoustic_enforce_free_surf_cuda(Mesh_pointer,compute_wavefield_1,compute_wavefield_2)
+  call acoustic_enforce_free_surf_omp(Mesh_pointer,compute_wavefield_1,compute_wavefield_2)
 
   end subroutine compute_forces_viscoacoustic_GPU
 
