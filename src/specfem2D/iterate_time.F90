@@ -151,12 +151,12 @@ subroutine iterate_time()
       ! acoustic domains
       if (ACOUSTIC_SIMULATION) then
         if (.not. GPU_MODE) then
-          call compute_forces_viscoacoustic_GPU(.false.)
-          !call compute_forces_viscoacoustic_main()
+          call compute_forces_viscoacoustic_main()
           if (SIMULATION_TYPE == 3 .and. .not. NO_BACKWARD_RECONSTRUCTION) call compute_forces_viscoacoustic_main_backward()
         else
           ! on GPU
-          if (any_acoustic) call compute_forces_viscoacoustic_GPU(.false.)
+          #if (any_acoustic) call compute_forces_viscoacoustic_GPU(.false.)
+          if (any_acoustic) call compute_forces_viscoacoustic_OMP(.false.)
         endif
       endif
 
