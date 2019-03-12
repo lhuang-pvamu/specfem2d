@@ -165,11 +165,11 @@ void compute_coupling_el_ac_omp( long* Mesh_pointer,
     if (iphase != 1) return;
     int num_coupling_ac_el_faces  = *num_coupling_ac_el_facesf;
     // way 1: exact blocksize to match NGLLX
-    int blocksize = NGLLX;
-    int num_blocks_x, num_blocks_y;
-    get_blocks_xy(num_coupling_ac_el_faces,&num_blocks_x,&num_blocks_y);
-    dim3 grid(num_blocks_x,num_blocks_y);
-    dim3 threads(blocksize,1,1);
+    //int blocksize = NGLLX;
+    //int num_blocks_x, num_blocks_y;
+    //get_blocks_xy(num_coupling_ac_el_faces,&num_blocks_x,&num_blocks_y);
+    //dim3 grid(num_blocks_x,num_blocks_y);
+    //dim3 threads(blocksize,1,1);
     // Add OMP For loop
     compute_coupling_elastic_ac_kernel( mp->d_potential_dot_dot_acoustic,
                                         mp->d_accel,
