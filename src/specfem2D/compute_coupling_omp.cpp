@@ -46,28 +46,32 @@ compute_coupling_acoustic_el_kernel( realw* displ,
                                      realw* coupling_ac_el_jacobian1Dw,
                                      int* d_ibool)
 {
-    int igll = threadIdx.x;
-    int iface = blockIdx.x + gridDim.x*blockIdx.y;
-    int i,j,iglob,ispec;
-    realw displ_x,displ_z,displ_n;
-    realw nx,nz;
-    realw jacobianw;
-    if (iface < num_coupling_ac_el_faces) {
-        ispec = coupling_ac_el_ispec[iface] - 1;
-        i = coupling_ac_el_ij[INDEX3(NDIM,NGLLX,0,igll,iface)] - 1;
-        j = coupling_ac_el_ij[INDEX3(NDIM,NGLLX,1,igll,iface)] - 1;
-        iglob = d_ibool[INDEX3_PADDED(NGLLX,NGLLX,i,j,ispec)] - 1;
-        // elastic displacement on global point
-        displ_x = displ[iglob*2] ; // (1,iglob)
-        displ_z = displ[iglob*2+1] ; // (2,iglob)
-        // gets associated normal on GLL point
-        nx = coupling_ac_el_normal[INDEX3(NDIM,NGLLX,0,igll,iface)]; // (1,igll,iface)
-        nz = coupling_ac_el_normal[INDEX3(NDIM,NGLLX,1,igll,iface)]; // (2,igll,iface)
-        // calculates displacement component along normal
-        // (normal points outwards of acoustic element)
-        displ_n = displ_x*nx + displ_z*nz;
-        jacobianw = coupling_ac_el_jacobian1Dw[INDEX2(NGLLX,igll,iface)];
-        atomicAdd(&potential_dot_dot_acoustic[iglob],+ jacobianw*displ_n);
+    //int igll = threadIdx.x;
+    //int iface = blockIdx.x + gridDim.x*blockIdx.y;
+    //int i,j,iglob,ispec;
+    //realw displ_x,displ_z,displ_n;
+    //realw nx,nz;
+    //realw jacobianw;
+    //if (iface < num_coupling_ac_el_faces) {
+    for(int iface=0; iface < num_coupling_ac_el_faces; i++){
+        for(int igll=0; igll<NGLLX; igll++) {
+            int ispec = coupling_ac_el_ispec[iface] - 1;
+            int i = coupling_ac_el_ij[INDEX3(NDIM,NGLLX,0,igll,iface)] - 1;
+            int j = coupling_ac_el_ij[INDEX3(NDIM,NGLLX,1,igll,iface)] - 1;
+            int iglob = d_ibool[INDEX3_PADDED(NGLLX,NGLLX,i,j,ispec)] - 1;
+            // elastic displacement on global point
+            realw displ_x = displ[iglob*2] ; // (1,iglob)
+            realw displ_z = displ[iglob*2+1] ; // (2,iglob)
+            // gets associated normal on GLL point
+            realw nx = coupling_ac_el_normal[INDEX3(NDIM,NGLLX,0,igll,iface)]; // (1,igll,iface)
+            realw nz = coupling_ac_el_normal[INDEX3(NDIM,NGLLX,1,igll,iface)]; // (2,igll,iface)
+            // calculates displacement component along normal
+            // (normal points outwards of acoustic element)
+            realw displ_n = displ_x*nx + displ_z*nz;
+            realw jacobianw = coupling_ac_el_jacobian1Dw[INDEX2(NGLLX,igll,iface)];
+            //atomicAdd
+            potential_dot_dot_acoustic[iglob] += jacobianw*displ_n;
+        }
     }
 }
 
@@ -81,13 +85,12 @@ void compute_coupling_ac_el_omp( long* Mesh_pointer, int* iphasef,
     if (iphase != 1) return;
     int num_coupling_ac_el_faces  = *num_coupling_ac_el_facesf;
     // way 1: exact blocksize to match NGLLSQUARE
-    int blocksize = NGLLX;
-    int num_blocks_x, num_blocks_y;
-    get_blocks_xy(num_coupling_ac_el_faces,&num_blocks_x,&num_blocks_y);
-    dim3 grid(num_blocks_x,num_blocks_y);
-    dim3 threads(blocksize,1,1);
-    // launches GPU kernel
-    // Add OMP For loop
+    //int blocksize = NGLLX;
+    //int num_blocks_x, num_blocks_y;
+    //get_blocks_xy(num_coupling_ac_el_faces,&num_blocks_x,&num_blocks_y);
+    //dim3 grid(num_blocks_x,num_blocks_y);
+    //dim3 threads(blocksize,1,1);
+
     compute_coupling_acoustic_el_kernel( mp->d_displ,
                                          mp->d_potential_dot_dot_acoustic,
                                          num_coupling_ac_el_faces,
@@ -121,27 +124,31 @@ compute_coupling_elastic_ac_kernel( realw* potential_dot_dot_acoustic,
                                     realw* coupling_ac_el_jacobian1Dw,
                                     int* d_ibool)
 {
-    int igll = threadIdx.x;
-    int iface = blockIdx.x + gridDim.x*blockIdx.y;
-    int i,j,iglob,ispec;
-    realw pressure;
-    realw nx,nz;
-    realw jacobianw;
-    if (iface < num_coupling_ac_el_faces) {
-        // "-1" from index values to convert from Fortran-> C indexing
-        ispec = coupling_ac_el_ispec[iface] - 1;
-        i = coupling_ac_el_ij[INDEX3(NDIM,NGLLX,0,igll,iface)] - 1;
-        j = coupling_ac_el_ij[INDEX3(NDIM,NGLLX,1,igll,iface)] - 1;
-        iglob = d_ibool[INDEX3_PADDED(NGLLX,NGLLX,i,j,ispec)] - 1;
-        // gets associated normal on GLL point
-        // note: normal points away from acoustic element
-        nx = coupling_ac_el_normal[INDEX3(NDIM,NGLLX,0,igll,iface)]; // (1,igll,iface)
-        nz = coupling_ac_el_normal[INDEX3(NDIM,NGLLX,1,igll,iface)]; // (2,igll,iface)
-        // gets associated, weighted jacobian
-        jacobianw = coupling_ac_el_jacobian1Dw[INDEX2(NGLLX,igll,iface)];
-        pressure = - potential_dot_dot_acoustic[iglob];
-        atomicAdd(&accel[iglob*2],+ jacobianw*nx*pressure);
-        atomicAdd(&accel[iglob*2+1],+ jacobianw*nz*pressure);
+    //int igll = threadIdx.x;
+    //int iface = blockIdx.x + gridDim.x*blockIdx.y;
+    //realw pressure;
+    //realw nx,nz;
+    //realw jacobianw;
+    //if (iface < num_coupling_ac_el_faces) {
+    for(int iface=0; iface < num_coupling_ac_el_faces; i++){
+        for(int igll=0; igll<NGLLX; igll++) {
+            // "-1" from index values to convert from Fortran-> C indexing
+            int ispec = coupling_ac_el_ispec[iface] - 1;
+            int i = coupling_ac_el_ij[INDEX3(NDIM,NGLLX,0,igll,iface)] - 1;
+            int j = coupling_ac_el_ij[INDEX3(NDIM,NGLLX,1,igll,iface)] - 1;
+            int iglob = d_ibool[INDEX3_PADDED(NGLLX,NGLLX,i,j,ispec)] - 1;
+            // gets associated normal on GLL point
+            // note: normal points away from acoustic element
+            realw nx = coupling_ac_el_normal[INDEX3(NDIM,NGLLX,0,igll,iface)]; // (1,igll,iface)
+            realw nz = coupling_ac_el_normal[INDEX3(NDIM,NGLLX,1,igll,iface)]; // (2,igll,iface)
+            // gets associated, weighted jacobian
+            realw jacobianw = coupling_ac_el_jacobian1Dw[INDEX2(NGLLX,igll,iface)];
+            realw pressure = - potential_dot_dot_acoustic[iglob];
+            //atomicAdd
+            accel[iglob*2] += jacobianw*nx*pressure;
+            //atomicAdd
+            accel[iglob*2+1] += jacobianw*nz*pressure;
+        }
     }
 }
 
