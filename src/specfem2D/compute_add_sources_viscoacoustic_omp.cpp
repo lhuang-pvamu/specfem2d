@@ -47,12 +47,6 @@ void compute_add_sources_acoustic_kernel( realw* potential_dot_dot_acoustic,
                                           realw* kappastore,
                                           int it,int nsources_local)
 {
-    //int i = threadIdx.x;
-    //int j = threadIdx.y;
-    //int isource  = blockIdx.x + gridDim.x*blockIdx.y; // bx
-    //int ispec,iglob;
-    //realw stf,kappal;
-    //if (isource < nsources_local) {
     for(int isource=0; isource < nsources_local; isource++) {
         int ispec = ispec_selected_source[isource]-1;
         if (ispec_is_acoustic[ispec]) {
@@ -73,16 +67,8 @@ extern "C"
 void compute_add_sources_ac_cuda(long* Mesh_pointer, int* iphasef, int * itf)
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
-    // check if anything to do
     if (mp->nsources_local == 0) return;
-    //int iphase = *iphasef;
-    // only add this contributions for first pass
     if (*iphasef != 1) return;
-    //int num_blocks_x, num_blocks_y;
-    //get_blocks_xy(mp->nsources_local,&num_blocks_x,&num_blocks_y);
-    //dim3 grid(num_blocks_x,num_blocks_y);
-    //dim3 threads(NGLLX,NGLLX,1);
-    //int it = *itf - 1;
     compute_add_sources_acoustic_kernel( mp->d_potential_dot_dot_acoustic,
                                          mp->d_ibool,
                                          mp->d_sourcearrays,
@@ -91,7 +77,7 @@ void compute_add_sources_ac_cuda(long* Mesh_pointer, int* iphasef, int * itf)
                                          mp->d_ispec_selected_source,
                                          mp->d_ispec_is_acoustic,
                                          mp->d_kappastore,
-                                         *itf - 1,
+                                         (*itf) - 1,
                                          mp->nsources_local);
 }
 
@@ -99,16 +85,8 @@ extern "C"
 void compute_add_sources_ac_s3_cuda(long* Mesh_pointer, int* iphasef, int* itf)
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
-    // check if anything to do
     if (mp->nsources_local == 0) return;
-    //int iphase = *iphasef;
-    // only add this contribution for first pass
     if (*iphasef != 1) return;
-    //int num_blocks_x, num_blocks_y;
-    //get_blocks_xy(mp->nsources_local,&num_blocks_x,&num_blocks_y);
-    //dim3 grid(num_blocks_x,num_blocks_y);
-    //dim3 threads(NGLLX,NGLLX,1);
-    int it = *itf - 1;
     compute_add_sources_acoustic_kernel(mp->d_b_potential_dot_dot_acoustic,
                                         mp->d_ibool,
                                         mp->d_sourcearrays,
@@ -117,7 +95,8 @@ void compute_add_sources_ac_s3_cuda(long* Mesh_pointer, int* iphasef, int* itf)
                                         mp->d_ispec_selected_source,
                                         mp->d_ispec_is_acoustic,
                                         mp->d_kappastore,
-                                        it,mp->nsources_local);
+                                        (*itf) - 1,
+                                        mp->nsources_local);
 }
 
 // acoustic adjoint sources
@@ -133,15 +112,11 @@ void add_sources_ac_SIM_TYPE_2_OR_3_kernel( realw* potential_dot_dot_acoustic,
         realw* kappastore,
         int NSTEP )
 {
-    //int irec_local = blockIdx.x + gridDim.x*blockIdx.y;
-    //if (irec_local < nadj_rec_local) {
     for(int irec_local=0; irec_local< nadj_rec_local; irec_local++){
         for(int i=0; i<NGLLX; i++) {
             for(int j=0; j<NGLLX; j++) {
                 int ispec = ispec_selected_rec_loc[irec_local]-1;
                 if (ispec_is_acoustic[ispec]) {
-                    //int i = threadIdx.x;
-                    //int j = threadIdx.y;
                     int iglob = d_ibool[INDEX3_PADDED(NGLLX,NGLLX,i,j,ispec)]-1;
                     realw  kappal = kappastore[INDEX3(NGLLX,NGLLX,i,j,ispec)];
                     realw  xir = xir_store[INDEX2(nadj_rec_local,irec_local,i)];
@@ -165,14 +140,7 @@ void add_sources_ac_sim_2_or_3_cuda(long* Mesh_pointer,
                                     int* NSTEP)
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
-    //int iphase = *iphasef;
-    // only adds this contributions for first pass
     if (*iphasef != 1) return;
-    //int num_blocks_x, num_blocks_y;
-    //get_blocks_xy(mp->nadj_rec_local,&num_blocks_x,&num_blocks_y);
-    //dim3 grid(num_blocks_x,num_blocks_y,1);
-    //dim3 threads(NGLLX,NGLLX,1);
-    int it_index = (*it) - 1;
     add_sources_ac_SIM_TYPE_2_OR_3_kernel( mp->d_potential_dot_dot_acoustic,
                                            mp->d_source_adjointe,
                                            mp->d_xir_store_loc,
@@ -180,7 +148,7 @@ void add_sources_ac_sim_2_or_3_cuda(long* Mesh_pointer,
                                            mp->d_ibool,
                                            mp->d_ispec_is_acoustic,
                                            mp->d_ispec_selected_rec_loc,
-                                           it_index,
+                                           (*it) - 1,
                                            mp->nadj_rec_local,
                                            mp->d_kappastore,
                                            *NSTEP);
