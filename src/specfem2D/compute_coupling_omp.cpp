@@ -46,7 +46,7 @@ compute_coupling_acoustic_el_kernel( realw* displ,
                                      realw* coupling_ac_el_jacobian1Dw,
                                      int* d_ibool)
 {
-    for(int iface=0; iface < num_coupling_ac_el_faces; i++) {
+    for(int iface=0; iface < num_coupling_ac_el_faces; iface++) {
         for(int igll=0; igll<NGLLX; igll++) {
             int ispec = coupling_ac_el_ispec[iface] - 1;
             int i = coupling_ac_el_ij[INDEX3(NDIM,NGLLX,0,igll,iface)] - 1;
@@ -104,7 +104,7 @@ compute_coupling_elastic_ac_kernel( realw* potential_dot_dot_acoustic,
                                     realw* coupling_ac_el_jacobian1Dw,
                                     int* d_ibool)
 {
-    for(int iface=0; iface < num_coupling_ac_el_faces; i++){
+    for(int iface=0; iface < num_coupling_ac_el_faces; iface++){
         for(int igll=0; igll<NGLLX; igll++) {
             // "-1" from index values to convert from Fortran-> C indexing
             int ispec = coupling_ac_el_ispec[iface] - 1;
