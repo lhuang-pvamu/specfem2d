@@ -69,10 +69,8 @@ void compute_coupling_ac_el_omp( long* Mesh_pointer, int* iphasef,
                                  int* num_coupling_ac_el_facesf )
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
-    int iphase            = *iphasef;
     // only add this contribution for first pass
-    if (iphase != 1) return;
-    //int num_coupling_ac_el_faces  = *num_coupling_ac_el_facesf;
+    if (*iphasef != 1) return;
 
     compute_coupling_acoustic_el_kernel( mp->d_displ,
                                          mp->d_potential_dot_dot_acoustic,
