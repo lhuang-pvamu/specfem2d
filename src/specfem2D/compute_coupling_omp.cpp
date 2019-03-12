@@ -46,27 +46,16 @@ compute_coupling_acoustic_el_kernel( realw* displ,
                                      realw* coupling_ac_el_jacobian1Dw,
                                      int* d_ibool)
 {
-    //int igll = threadIdx.x;
-    //int iface = blockIdx.x + gridDim.x*blockIdx.y;
-    //int i,j,iglob,ispec;
-    //realw displ_x,displ_z,displ_n;
-    //realw nx,nz;
-    //realw jacobianw;
-    //if (iface < num_coupling_ac_el_faces) {
-    for(int iface=0; iface < num_coupling_ac_el_faces; i++){
+    for(int iface=0; iface < num_coupling_ac_el_faces; i++) {
         for(int igll=0; igll<NGLLX; igll++) {
             int ispec = coupling_ac_el_ispec[iface] - 1;
             int i = coupling_ac_el_ij[INDEX3(NDIM,NGLLX,0,igll,iface)] - 1;
             int j = coupling_ac_el_ij[INDEX3(NDIM,NGLLX,1,igll,iface)] - 1;
             int iglob = d_ibool[INDEX3_PADDED(NGLLX,NGLLX,i,j,ispec)] - 1;
-            // elastic displacement on global point
             realw displ_x = displ[iglob*2] ; // (1,iglob)
             realw displ_z = displ[iglob*2+1] ; // (2,iglob)
-            // gets associated normal on GLL point
             realw nx = coupling_ac_el_normal[INDEX3(NDIM,NGLLX,0,igll,iface)]; // (1,igll,iface)
             realw nz = coupling_ac_el_normal[INDEX3(NDIM,NGLLX,1,igll,iface)]; // (2,igll,iface)
-            // calculates displacement component along normal
-            // (normal points outwards of acoustic element)
             realw displ_n = displ_x*nx + displ_z*nz;
             realw jacobianw = coupling_ac_el_jacobian1Dw[INDEX2(NGLLX,igll,iface)];
             //atomicAdd
@@ -81,19 +70,13 @@ void compute_coupling_ac_el_omp( long* Mesh_pointer, int* iphasef,
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
     int iphase            = *iphasef;
-    // only adds this contribution for first pass
+    // only add this contribution for first pass
     if (iphase != 1) return;
-    int num_coupling_ac_el_faces  = *num_coupling_ac_el_facesf;
-    // way 1: exact blocksize to match NGLLSQUARE
-    //int blocksize = NGLLX;
-    //int num_blocks_x, num_blocks_y;
-    //get_blocks_xy(num_coupling_ac_el_faces,&num_blocks_x,&num_blocks_y);
-    //dim3 grid(num_blocks_x,num_blocks_y);
-    //dim3 threads(blocksize,1,1);
+    //int num_coupling_ac_el_faces  = *num_coupling_ac_el_facesf;
 
     compute_coupling_acoustic_el_kernel( mp->d_displ,
                                          mp->d_potential_dot_dot_acoustic,
-                                         num_coupling_ac_el_faces,
+                                         *num_coupling_ac_el_facesf,
                                          mp->d_coupling_ac_el_ispec,
                                          mp->d_coupling_ac_el_ijk,
                                          mp->d_coupling_ac_el_normal,
@@ -101,7 +84,6 @@ void compute_coupling_ac_el_omp( long* Mesh_pointer, int* iphasef,
                                          mp->d_ibool);
     //  adjoint simulations
     if (mp->simulation_type == 3) {
-        // Add OMP For loop
         compute_coupling_acoustic_el_kernel( mp->d_b_displ,
                                              mp->d_b_potential_dot_dot_acoustic,
                                              num_coupling_ac_el_faces,
@@ -124,12 +106,6 @@ compute_coupling_elastic_ac_kernel( realw* potential_dot_dot_acoustic,
                                     realw* coupling_ac_el_jacobian1Dw,
                                     int* d_ibool)
 {
-    //int igll = threadIdx.x;
-    //int iface = blockIdx.x + gridDim.x*blockIdx.y;
-    //realw pressure;
-    //realw nx,nz;
-    //realw jacobianw;
-    //if (iface < num_coupling_ac_el_faces) {
     for(int iface=0; iface < num_coupling_ac_el_faces; i++){
         for(int igll=0; igll<NGLLX; igll++) {
             // "-1" from index values to convert from Fortran-> C indexing
@@ -137,11 +113,8 @@ compute_coupling_elastic_ac_kernel( realw* potential_dot_dot_acoustic,
             int i = coupling_ac_el_ij[INDEX3(NDIM,NGLLX,0,igll,iface)] - 1;
             int j = coupling_ac_el_ij[INDEX3(NDIM,NGLLX,1,igll,iface)] - 1;
             int iglob = d_ibool[INDEX3_PADDED(NGLLX,NGLLX,i,j,ispec)] - 1;
-            // gets associated normal on GLL point
-            // note: normal points away from acoustic element
             realw nx = coupling_ac_el_normal[INDEX3(NDIM,NGLLX,0,igll,iface)]; // (1,igll,iface)
             realw nz = coupling_ac_el_normal[INDEX3(NDIM,NGLLX,1,igll,iface)]; // (2,igll,iface)
-            // gets associated, weighted jacobian
             realw jacobianw = coupling_ac_el_jacobian1Dw[INDEX2(NGLLX,igll,iface)];
             realw pressure = - potential_dot_dot_acoustic[iglob];
             //atomicAdd
@@ -152,25 +125,16 @@ compute_coupling_elastic_ac_kernel( realw* potential_dot_dot_acoustic,
     }
 }
 
-/* ----------------------------------------------------------------------------------------------- */
-
 extern "C"
 void compute_coupling_el_ac_omp( long* Mesh_pointer,
                                  int* iphasef,
                                  int* num_coupling_ac_el_facesf)
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
-    int iphase            = *iphasef;
-    // only adds this contribution for first pass
-    if (iphase != 1) return;
+    //int iphase            = *iphasef;
+    // only add this contribution for first pass
+    if (*iphasef != 1) return;
     int num_coupling_ac_el_faces  = *num_coupling_ac_el_facesf;
-    // way 1: exact blocksize to match NGLLX
-    //int blocksize = NGLLX;
-    //int num_blocks_x, num_blocks_y;
-    //get_blocks_xy(num_coupling_ac_el_faces,&num_blocks_x,&num_blocks_y);
-    //dim3 grid(num_blocks_x,num_blocks_y);
-    //dim3 threads(blocksize,1,1);
-    // Add OMP For loop
     compute_coupling_elastic_ac_kernel( mp->d_potential_dot_dot_acoustic,
                                         mp->d_accel,
                                         num_coupling_ac_el_faces,
@@ -181,7 +145,6 @@ void compute_coupling_el_ac_omp( long* Mesh_pointer,
                                         mp->d_ibool);
     //  adjoint simulations
     if (mp->simulation_type == 3) {
-        // Add OMP For loop
         compute_coupling_elastic_ac_kernel( mp->d_b_potential_dot_dot_acoustic,
                                             mp->d_b_accel,
                                             num_coupling_ac_el_faces,
