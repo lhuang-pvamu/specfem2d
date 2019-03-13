@@ -35,20 +35,17 @@
 
 subroutine compute_forces_viscoacoustic_OMP(compute_b_wavefield_arg)
 
-    use specfem_par, only:
-    NPROC,ninterface,max_nibool_interfaces_ext_mesh,nibool_interfaces_ext_mesh, &
-        my_neighbors,ninterface_acoustic,inum_interfaces_acoustic, &
-        nelem_acoustic_surface,num_fluid_solid_edges,UNDO_ATTENUATION_AND_OR_PML, &
-        STACEY_ABSORBING_CONDITIONS,any_elastic,any_poroelastic,SIMULATION_TYPE,ATTENUATION_VISCOACOUSTIC
+    use specfem_par, only: NPROC,ninterface,max_nibool_interfaces_ext_mesh,nibool_interfaces_ext_mesh, &
+                           my_neighbors,ninterface_acoustic,inum_interfaces_acoustic, &
+                           nelem_acoustic_surface,num_fluid_solid_edges,UNDO_ATTENUATION_AND_OR_PML, &
+                           STACEY_ABSORBING_CONDITIONS,any_elastic,any_poroelastic,SIMULATION_TYPE,ATTENUATION_VISCOACOUSTIC
 
-    use specfem_par, only:
-    nspec_outer_acoustic, nspec_inner_acoustic,NO_BACKWARD_RECONSTRUCTION
+    use specfem_par, only: nspec_outer_acoustic, nspec_inner_acoustic,NO_BACKWARD_RECONSTRUCTION
 
-    use specfem_par_gpu, only:
-    Mesh_pointer,deltatover2f,b_deltatover2f, &
-        buffer_send_scalar_gpu,buffer_recv_scalar_gpu, &
-        b_buffer_send_scalar_gpu,b_buffer_recv_scalar_gpu, &
-        request_send_recv_scalar_gpu,b_request_send_recv_scalar_gpu
+    use specfem_par_gpu, only: Mesh_pointer,deltatover2f,b_deltatover2f, &
+                               buffer_send_scalar_gpu,buffer_recv_scalar_gpu, &
+                               b_buffer_send_scalar_gpu,b_buffer_recv_scalar_gpu, &
+                               request_send_recv_scalar_gpu,b_request_send_recv_scalar_gpu
 
     implicit none
 
@@ -81,14 +78,14 @@ subroutine compute_forces_viscoacoustic_OMP(compute_b_wavefield_arg)
     endif
 
     ! distinguishes two runs:
-    for elements on MPI interfaces, and elements within the partitions
+    !for elements on MPI interfaces, and elements within the partitions
     do iphase = 1,2
         call compute_forces_acoustic_omp(Mesh_pointer, iphase, &
                                          nspec_outer_acoustic, nspec_inner_acoustic,ATTENUATION_VISCOACOUSTIC, &
                                          compute_wavefield_1,compute_wavefield_2)
         if (iphase == 1) then
             if (STACEY_ABSORBING_CONDITIONS) then
-                call compute_stacey_acoustic_OMP(iphase,compute_wavefield_1,compute_wavefield_2)
+                call compute_stacey_acoustic_PAR(iphase,compute_wavefield_1,compute_wavefield_2)
             endif
 
             if (any_elastic) then
@@ -131,7 +128,8 @@ subroutine compute_forces_viscoacoustic_OMP(compute_b_wavefield_arg)
                                                       my_neighbors, &
                                                       b_request_send_recv_scalar_gpu,ninterface_acoustic,inum_interfaces_acoustic)
                 endif
-            else if ( compute_wavefield_1) &
+            else 
+                if ( compute_wavefield_1) &
                 ! waits for send/receive requests to be completed and assembles values
                 call assemble_MPI_scalar_write_omp(NPROC, &
                                                    Mesh_pointer, &
@@ -165,7 +163,7 @@ end subroutine compute_forces_viscoacoustic_OMP
 
 !---------------------------------------------------------------------------------------------
 
-subroutine compute_stacey_acoustic_OMP(iphase,compute_wavefield_1,compute_wavefield_2)
+subroutine compute_stacey_acoustic_PAR(iphase,compute_wavefield_1,compute_wavefield_2)
 
     use constants, only: CUSTOM_REAL,NGLLX
 
@@ -200,8 +198,8 @@ subroutine compute_stacey_acoustic_OMP(iphase,compute_wavefield_1,compute_wavefi
 
     ! absorbs absorbing-boundary surface using Sommerfeld condition (vanishing field in the outer-space)
     call compute_stacey_acoustic_omp(Mesh_pointer,iphase,b_absorb_potential_left_slice,b_absorb_potential_right_slice, &
-        b_absorb_potential_top_slice,b_absorb_potential_bottom_slice, &
-        compute_wavefield_1,compute_wavefield_2,UNDO_ATTENUATION_AND_OR_PML)
+                                     b_absorb_potential_top_slice,b_absorb_potential_bottom_slice, &
+                                     compute_wavefield_1,compute_wavefield_2,UNDO_ATTENUATION_AND_OR_PML)
 
     ! adjoint simulations: stores absorbed wavefield part
     if (SIMULATION_TYPE == 1 .and. SAVE_FORWARD .and. (.not. UNDO_ATTENUATION_AND_OR_PML .and. &
@@ -213,7 +211,7 @@ subroutine compute_stacey_acoustic_OMP(iphase,compute_wavefield_1,compute_wavefi
         b_absorb_acoustic_left(:,:,it) = b_absorb_potential_left_slice(:,:)
     endif
 
-end subroutine compute_stacey_acoustic_OMP
+end subroutine compute_stacey_acoustic_PAR
 
 !---------------------------------------------------------------------------------------------
 

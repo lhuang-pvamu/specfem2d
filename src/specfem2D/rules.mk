@@ -86,6 +86,7 @@ specfem2D_OBJECTS = \
 	$O/compute_forces_poro_viscous_damping.spec.o \
 	$O/compute_forces_viscoelastic.spec.o \
 	$O/compute_forces_viscoelastic_calling_routine.spec.o \
+	$O/compute_omp_acoustic.spec.o \
 	$O/compute_gpu_acoustic.spec.o \
 	$O/compute_gpu_elastic.spec.o \
 	$O/compute_gradient_attenuation.spec.o \
@@ -253,6 +254,9 @@ specfem2D_OBJECTS += $(JPEGLIB_OBJECTS)
 ##
 omp_specfem2D_OBJECTS = \
 	$O/compute_forces_acoustic_omp.cpp.o \
+	$O/compute_add_sources_viscoacoustic_omp.cpp.o \
+	$O/compute_coupling_omp.cpp.o \
+	$O/compute_stacey_acoustic_omp.cpp.o \
 	$(EMPTY_MACRO)
 
 ###

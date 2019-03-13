@@ -84,7 +84,7 @@ void compute_coupling_ac_el_omp( long* Mesh_pointer, int* iphasef,
     if (mp->simulation_type == 3) {
         compute_coupling_acoustic_el_kernel( mp->d_b_displ,
                                              mp->d_b_potential_dot_dot_acoustic,
-                                             num_coupling_ac_el_faces,
+                                             *num_coupling_ac_el_facesf,
                                              mp->d_coupling_ac_el_ispec,
                                              mp->d_coupling_ac_el_ijk,
                                              mp->d_coupling_ac_el_normal,

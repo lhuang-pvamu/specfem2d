@@ -51,7 +51,7 @@ void compute_add_sources_acoustic_kernel( realw* potential_dot_dot_acoustic,
         int ispec = ispec_selected_source[isource]-1;
         if (ispec_is_acoustic[ispec]) {
             for(int i=0; i<NGLLX; i++) {
-                for(int j=0; j<NGLLX, j++) {
+                for(int j=0; j<NGLLX; j++) {
                     int iglob = d_ibool[INDEX3_PADDED(NGLLX,NGLLX,i,j,ispec)] - 1;
                     realw kappal = kappastore[INDEX3(NGLLX,NGLLX,i,j,ispec)];
                     realw stf = source_time_function[INDEX2(nsources_local,isource,it)]/kappal;
@@ -64,7 +64,7 @@ void compute_add_sources_acoustic_kernel( realw* potential_dot_dot_acoustic,
 }
 
 extern "C"
-void compute_add_sources_ac_cuda(long* Mesh_pointer, int* iphasef, int * itf)
+void compute_add_sources_ac_omp_(long* Mesh_pointer, int* iphasef, int * itf)
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
     if (mp->nsources_local == 0) return;
@@ -82,7 +82,7 @@ void compute_add_sources_ac_cuda(long* Mesh_pointer, int* iphasef, int * itf)
 }
 
 extern "C"
-void compute_add_sources_ac_s3_cuda(long* Mesh_pointer, int* iphasef, int* itf)
+void compute_add_sources_ac_s3_omp_(long* Mesh_pointer, int* iphasef, int* itf)
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
     if (mp->nsources_local == 0) return;
@@ -133,7 +133,7 @@ void add_sources_ac_SIM_TYPE_2_OR_3_kernel( realw* potential_dot_dot_acoustic,
 
 
 extern "C"
-void add_sources_ac_sim_2_or_3_cuda(long* Mesh_pointer,
+void add_sources_ac_sim_2_or_3_omp_(long* Mesh_pointer,
                                     int* iphasef,
                                     int* it,
                                     int* nadj_rec_local,

@@ -71,7 +71,7 @@ void compute_stacey_acoustic_kernel( realw* potential_dot_acoustic,
             //realw vel;
             //if (iface >= num_abs_boundary_faces) return;
             // "-1" from index values to convert from Fortran-> C indexing
-            ispec = abs_boundary_ispec[iface]-1;
+            int ispec = abs_boundary_ispec[iface]-1;
             if ( ! ispec_is_acoustic[ispec]) return;
             int i = abs_boundary_ij[INDEX3(NDIM,NGLLX,0,igll,iface)]-1;
             int j = abs_boundary_ij[INDEX3(NDIM,NGLLX,1,igll,iface)]-1;
@@ -139,7 +139,7 @@ void compute_stacey_acoustic_kernel( realw* potential_dot_acoustic,
 }
 
 extern "C"
-void compute_stacey_acoustic_cuda( long* Mesh_pointer,
+void compute_stacey_acoustic_omp_( long* Mesh_pointer,
                                    int* iphasef,
                                    realw* h_b_absorb_potential_left,
                                    realw* h_b_absorb_potential_right,
