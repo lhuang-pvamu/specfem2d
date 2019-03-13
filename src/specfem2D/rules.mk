@@ -257,6 +257,7 @@ omp_specfem2D_OBJECTS = \
 	$O/compute_add_sources_viscoacoustic_omp.cpp.o \
 	$O/compute_coupling_omp.cpp.o \
 	$O/compute_stacey_acoustic_omp.cpp.o \
+	$O/update_displacement_omp.cpp.o \
 	$(EMPTY_MACRO)
 
 ###
