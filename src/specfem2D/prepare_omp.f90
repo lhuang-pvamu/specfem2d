@@ -31,7 +31,7 @@
 !
 !========================================================================
 
-  subroutine prepare_GPU()
+  subroutine prepare_OMP()
 
   use constants, only: IMAIN,APPROXIMATE_HESS_KL,USE_A_STRONG_FORMULATION_FOR_E1
   use specfem_par
@@ -45,34 +45,34 @@
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: rmassx,rmassz
 
   ! checks if anything to do
-  if (.not. GPU_MODE) return
+  if (.not. OMP_MODE) return
 
-  ! GPU_MODE now defined in Par_file
+  ! OMP_MODE now defined in Par_file
   if (myrank == 0) then
     write(IMAIN,*)
-    write(IMAIN,*) "Preparing GPU Fields and Constants on Device."
+    write(IMAIN,*) "Preparing OMP Fields and Constants on Device."
     call flush_IMAIN()
   endif
 
   ! safety checks
   if (any_elastic .and. (.not. P_SV)) call stop_the_code( &
-'Invalid GPU simulation, SH waves not implemented yet. Please use P_SV instead.')
-  if (PML_BOUNDARY_CONDITIONS ) call stop_the_code('PML not implemented on GPU mode. Please use Stacey instead.')
-  if (AXISYM) call stop_the_code('Axisym not implemented on GPU yet.')
-  if (NGLLX /= NGLLZ) call stop_the_code('GPU simulations require NGLLX == NGLLZ')
+'Invalid OMP simulation, SH waves not implemented yet. Please use P_SV instead.')
+  if (PML_BOUNDARY_CONDITIONS ) call stop_the_code('PML not implemented on OMP mode. Please use Stacey instead.')
+  if (AXISYM) call stop_the_code('Axisym not implemented on OMP yet.')
+  if (NGLLX /= NGLLZ) call stop_the_code('OMP simulations require NGLLX == NGLLZ')
   if ( (.not. USE_A_STRONG_FORMULATION_FOR_E1) .and. ATTENUATION_VISCOACOUSTIC) call stop_the_code( &
-    'GPU simulations require USE_A_STRONG_FORMULATION_FOR_E1 set to true')
+    'OMP simulations require USE_A_STRONG_FORMULATION_FOR_E1 set to true')
   if ( ATTENUATION_VISCOELASTIC .and. SIMULATION_TYPE == 3) call stop_the_code( &
-    'GPU mode do not support yet adjoint simulations with attenuation viscoelastic')
+    'OMP mode do not support yet adjoint simulations with attenuation viscoelastic')
   if ( (ATTENUATION_VISCOACOUSTIC .or. ATTENUATION_VISCOELASTIC) .and. any_elastic .and. any_acoustic) call stop_the_code( &
-    'GPU mode do not support yet coupled fluid-solid simulations with attenuation')
+    'OMP mode do not support yet coupled fluid-solid simulations with attenuation')
   ! initializes arrays
   call init_host_to_dev_variable()
 
   ! check number of purely elastic elements
   if (nspec_elastic /= nspec - nspec_acoustic) then
-    print *,'GPU simulation only supported for acoustic and/or elastic domain simulations'
-    call stop_the_code('Error GPU simulation')
+    print *,'OMP simulation only supported for acoustic and/or elastic domain simulations'
+    call stop_the_code('Error OMP simulation')
   endif
 
 !!!!!!!!!!! Parametres fournis
@@ -97,44 +97,44 @@
 ! nrecloc                                : nombre de receveurs locaux
 ! nspec_acoustic                         : nombre local d'elements spectraux acoustiques
 
-  ! prepares general fields on GPU
-  !! JC JC here we will need to add GPU support for the C-PML routines
+  ! prepares general fields on OMP 
+  !! JC JC here we will need to add OMP support for the C-PML routines
 
-  call prepare_constants_device(Mesh_pointer, &
-                                NGLLX, nspec, nglob, &
-                                xix, xiz, gammax, gammaz, &
-                                kappastore, mustore, &
-                                ibool, &
-                                ninterface, max_nibool_interfaces_ext_mesh, &
-                                nibool_interfaces_ext_mesh, ibool_interfaces_ext_mesh, &
-                                hprime_xx,hprimewgll_xx, &
-                                wxgll, &
-                                STACEY_ABSORBING_CONDITIONS, &
-                                nspec_bottom, &
-                                nspec_left, &
-                                nspec_right, &
-                                nspec_top, &
-                                numabs, abs_boundary_ij, &
-                                abs_boundary_normal, &
-                                abs_boundary_jacobian1Dw, &
-                                nelemabs, &
-                                cote_abs, &
-                                ib_bottom, &
-                                ib_left, &
-                                ib_right, &
-                                ib_top, &
-                                ispec_is_inner, &
-                                nsources_local, &
-                                sourcearray_loc,source_time_function_loc, &
-                                NSTEP,ispec_selected_source_loc, &
-                                ispec_selected_rec_loc, &
-                                nrecloc, &
-                                cosrot_irecf,sinrot_irecf, &
-                                SIMULATION_TYPE, &
-                                nspec_acoustic,nspec_elastic, &
-                                myrank,SAVE_FORWARD, &
-                                xir_store_loc, &
-                                gammar_store_loc)
+  call prepare_constants_device_omp(Mesh_pointer, &
+                                    NGLLX, nspec, nglob, &
+                                    xix, xiz, gammax, gammaz, &
+                                    kappastore, mustore, &
+                                    ibool, &
+                                    ninterface, max_nibool_interfaces_ext_mesh, &
+                                    nibool_interfaces_ext_mesh, ibool_interfaces_ext_mesh, &
+                                    hprime_xx,hprimewgll_xx, &
+                                    wxgll, &
+                                    STACEY_ABSORBING_CONDITIONS, &
+                                    nspec_bottom, &
+                                    nspec_left, &
+                                    nspec_right, &
+                                    nspec_top, &
+                                    numabs, abs_boundary_ij, &
+                                    abs_boundary_normal, &
+                                    abs_boundary_jacobian1Dw, &
+                                    nelemabs, &
+                                    cote_abs, &
+                                    ib_bottom, &
+                                    ib_left, &
+                                    ib_right, &
+                                    ib_top, &
+                                    ispec_is_inner, &
+                                    nsources_local, &
+                                    sourcearray_loc,source_time_function_loc, &
+                                    NSTEP,ispec_selected_source_loc, &
+                                    ispec_selected_rec_loc, &
+                                    nrecloc, &
+                                    cosrot_irecf,sinrot_irecf, &
+                                    SIMULATION_TYPE, &
+                                    nspec_acoustic,nspec_elastic, &
+                                    myrank,SAVE_FORWARD, &
+                                    xir_store_loc, &
+                                    gammar_store_loc)
 
 
 !!! Parametres fournis
@@ -156,27 +156,27 @@
 ! coupling_ac_el_jacobian1Dw(i,ispec)    : jacobienne ponderee du i eme point GLL de l'element frontiere ispec
 
 
-  ! prepares fields on GPU for acoustic simulations
+  ! prepares fields on OMP for acoustic simulations
   if (any_acoustic) then
-    call prepare_fields_acoustic_device(Mesh_pointer, &
-                                        rmass_inverse_acoustic,rhostore,kappastore, &
-                                        num_phase_ispec_acoustic,phase_ispec_inner_acoustic, &
-                                        ispec_is_acoustic, &
-                                        nelem_acoustic_surface, &
-                                        free_ac_ispec,free_surface_ij, &
-                                        any_elastic, num_fluid_solid_edges, &
-                                        coupling_ac_el_ispec,coupling_ac_el_ij, &
-                                        coupling_ac_el_normal,coupling_ac_el_jacobian1Dw, &
-                                        ninterface_acoustic,inum_interfaces_acoustic,ATTENUATION_VISCOACOUSTIC, &
-                                        A_newmark_e1_sf,B_newmark_e1_sf,NO_BACKWARD_RECONSTRUCTION,no_backward_acoustic_buffer)
+    call prepare_fields_acoustic_device_omp(Mesh_pointer, &
+                                            rmass_inverse_acoustic,rhostore,kappastore, &
+                                            num_phase_ispec_acoustic,phase_ispec_inner_acoustic, &
+                                            ispec_is_acoustic, &
+                                            nelem_acoustic_surface, &
+                                            free_ac_ispec,free_surface_ij, &
+                                            any_elastic, num_fluid_solid_edges, &
+                                            coupling_ac_el_ispec,coupling_ac_el_ij, &
+                                            coupling_ac_el_normal,coupling_ac_el_jacobian1Dw, &
+                                            ninterface_acoustic,inum_interfaces_acoustic,ATTENUATION_VISCOACOUSTIC, &
+                                            A_newmark_e1_sf,B_newmark_e1_sf,NO_BACKWARD_RECONSTRUCTION,no_backward_acoustic_buffer)
 
     if (SIMULATION_TYPE == 3) then
       ! safety check
       if (APPROXIMATE_HESS_KL) then
-        call stop_the_code('Sorry, approximate acoustic Hessian kernels not yet fully implemented for GPU simulations!')
+        call stop_the_code('Sorry, approximate acoustic Hessian kernels not yet fully implemented for OMP simulations!')
       endif
-      call prepare_fields_acoustic_adj_dev(Mesh_pointer,APPROXIMATE_HESS_KL, &
-                                           ATTENUATION_VISCOACOUSTIC,NO_BACKWARD_RECONSTRUCTION)
+      call prepare_fields_acoustic_adj_dev_omp(Mesh_pointer,APPROXIMATE_HESS_KL, &
+                                               ATTENUATION_VISCOACOUSTIC,NO_BACKWARD_RECONSTRUCTION)
     endif
   endif
 
@@ -188,56 +188,56 @@
 ! phase_ispec_inner_elastic(i,j) : i eme element spectral elastique interieur si j=2 exterieur si j=1
 ! elastic(i)                     : vrai si l'element spectral i est elastique
 
-  ! prepares fields on GPU for elastic simulations
-  !?!? JC JC here we will need to add GPU support for the new C-PML routines
+  ! prepares fields on OMP for elastic simulations
+  !?!? JC JC here we will need to add OMP support for the new C-PML routines
   if (any_elastic) then
     ! temporary mass matrices
     allocate(rmassx(nglob_elastic),rmassz(nglob_elastic))
     rmassx(:) = rmass_inverse_elastic(1,:)
     rmassz(:) = rmass_inverse_elastic(2,:)
 
-    call prepare_fields_elastic_device(Mesh_pointer, &
-                                       rmassx,rmassz, &
-                                       rho_vp,rho_vs, &
-                                       num_phase_ispec_elastic,phase_ispec_inner_elastic, &
-                                       ispec_is_elastic, &
-                                       nspec_left, &
-                                       nspec_right, &
-                                       nspec_top, &
-                                       nspec_bottom, &
-                                       ANY_ANISOTROPY, &
-                                       c11store,c12store,c13store, &
-                                       c15store,c23store, &
-                                       c25store,c33store,c35store,c55store, &
-                                       ninterface_elastic,inum_interfaces_elastic,ATTENUATION_VISCOELASTIC, &
-                                       A_newmark_nu2,B_newmark_nu2,A_newmark_nu1,B_newmark_nu1)
+    call prepare_fields_elastic_device_omp(Mesh_pointer, &
+                                           rmassx,rmassz, &
+                                           rho_vp,rho_vs, &
+                                           num_phase_ispec_elastic,phase_ispec_inner_elastic, &
+                                           ispec_is_elastic, &
+                                           nspec_left, &
+                                           nspec_right, &
+                                           nspec_top, &
+                                           nspec_bottom, &
+                                           ANY_ANISOTROPY, &
+                                           c11store,c12store,c13store, &
+                                           c15store,c23store, &
+                                           c25store,c33store,c35store,c55store, &
+                                           ninterface_elastic,inum_interfaces_elastic,ATTENUATION_VISCOELASTIC, &
+                                           A_newmark_nu2,B_newmark_nu2,A_newmark_nu1,B_newmark_nu1)
 
 
     if (SIMULATION_TYPE == 3) then
       ! safety check
       if (APPROXIMATE_HESS_KL) then
-        call stop_the_code('Sorry, approximate elastic Hessian kernels not yet fully implemented for GPU simulations!')
+        call stop_the_code('Sorry, approximate elastic Hessian kernels not yet fully implemented for OMP simulations!')
       endif
-      call prepare_fields_elastic_adj_dev(Mesh_pointer,NDIM*NGLOB_AB,APPROXIMATE_HESS_KL)
+      call prepare_fields_elastic_adj_dev_omp(Mesh_pointer,NDIM*NGLOB_AB,APPROXIMATE_HESS_KL)
     endif
 
     ! frees memory
     deallocate(rmassx,rmassz)
   endif
 
-  ! prepares fields on GPU for poroelastic simulations
+  ! prepares fields on OMP for poroelastic simulations
   if (any_poroelastic) then
-    call stop_the_code('todo poroelastic simulations on GPU')
+    call stop_the_code('todo poroelastic simulations on OMP')
   endif
 
   ! prepares needed receiver array for adjoint runs
   if (SIMULATION_TYPE == 2 .or. SIMULATION_TYPE == 3) &
-    call prepare_sim2_or_3_const_device(Mesh_pointer,nrecloc,source_adjoint,NSTEP)
+    call prepare_sim2_or_3_const_device_omp(Mesh_pointer,nrecloc,source_adjoint,NSTEP)
 
   ! synchronizes processes
   call synchronize_all()
 
-  ! puts acoustic initial fields onto GPU
+  ! puts acoustic initial fields onto OMP
   if (any_acoustic) then
     call transfer_fields_ac_to_device(NGLOB_AB,potential_acoustic, &
                                       potential_dot_acoustic,potential_dot_dot_acoustic,Mesh_pointer)
@@ -247,7 +247,7 @@
                                           b_potential_dot_acoustic,b_potential_dot_dot_acoustic,Mesh_pointer)
   endif
 
-  ! puts elastic initial fields onto GPU
+  ! puts elastic initial fields onto OMP
   if (any_elastic) then
     ! prepares wavefields for transfering
     allocate(tmp_displ_2D(NDIM,nglob_elastic), &
@@ -293,7 +293,7 @@
   ! synchronizes processes
   call synchronize_all()
 
-  ! outputs GPU usage to files for all processes
+  ! outputs OMP usage to files for all processes
   call output_free_device_memory(myrank)
 
   ! outputs usage for main process
@@ -301,7 +301,7 @@
     call get_free_device_memory(free_mb,used_mb,total_mb)
 
     write(IMAIN,*)
-    write(IMAIN,*) "GPU usage: free  =",free_mb," MB",nint(free_mb/total_mb*100.0),"%"
+    write(IMAIN,*) "OMP usage: free  =",free_mb," MB",nint(free_mb/total_mb*100.0),"%"
     write(IMAIN,*) "           used  =",used_mb," MB",nint(used_mb/total_mb*100.0),"%"
     write(IMAIN,*) "           total =",total_mb," MB",nint(total_mb/total_mb*100.0),"%"
     write(IMAIN,*)
@@ -339,7 +339,7 @@
 
   ! user output
   if (myrank == 0) then
-    write(IMAIN,*) '  initializing arrays for GPU:'
+    write(IMAIN,*) '  initializing arrays for OMP:'
     call flush_IMAIN()
   endif
 
@@ -708,4 +708,4 @@
 
 !----------------------------------------------------------------------
 
-  end subroutine prepare_GPU
+  end subroutine prepare_OMP
