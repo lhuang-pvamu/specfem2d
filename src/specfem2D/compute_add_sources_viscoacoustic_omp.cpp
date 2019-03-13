@@ -37,15 +37,15 @@
 
 
 // acoustic sources
-void compute_add_sources_acoustic_kernel( realw* potential_dot_dot_acoustic,
-                                          int* d_ibool,
-                                          realw* sourcearrays,
-                                          realw* source_time_function,
-                                          int myrank,
-                                          int* ispec_selected_source,
-                                          int* ispec_is_acoustic,
-                                          realw* kappastore,
-                                          int it,int nsources_local)
+void compute_add_sources_acoustic_omp_kernel( realw* potential_dot_dot_acoustic,
+                                              int* d_ibool,
+                                              realw* sourcearrays,
+                                              realw* source_time_function,
+                                              int myrank,
+                                              int* ispec_selected_source,
+                                              int* ispec_is_acoustic,
+                                              realw* kappastore,
+                                              int it,int nsources_local)
 {
     for(int isource=0; isource < nsources_local; isource++) {
         int ispec = ispec_selected_source[isource]-1;
@@ -69,16 +69,16 @@ void compute_add_sources_ac_omp_(long* Mesh_pointer, int* iphasef, int * itf)
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
     if (mp->nsources_local == 0) return;
     if (*iphasef != 1) return;
-    compute_add_sources_acoustic_kernel( mp->d_potential_dot_dot_acoustic,
-                                         mp->d_ibool,
-                                         mp->d_sourcearrays,
-                                         mp->d_source_time_function,
-                                         mp->myrank,
-                                         mp->d_ispec_selected_source,
-                                         mp->d_ispec_is_acoustic,
-                                         mp->d_kappastore,
-                                         (*itf) - 1,
-                                         mp->nsources_local);
+    compute_add_sources_acoustic_omp_kernel( mp->d_potential_dot_dot_acoustic,
+                                             mp->d_ibool,
+                                             mp->d_sourcearrays,
+                                             mp->d_source_time_function,
+                                             mp->myrank,
+                                             mp->d_ispec_selected_source,
+                                             mp->d_ispec_is_acoustic,
+                                             mp->d_kappastore,
+                                             (*itf) - 1,
+                                             mp->nsources_local);
 }
 
 extern "C"
@@ -87,7 +87,7 @@ void compute_add_sources_ac_s3_omp_(long* Mesh_pointer, int* iphasef, int* itf)
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
     if (mp->nsources_local == 0) return;
     if (*iphasef != 1) return;
-    compute_add_sources_acoustic_kernel(mp->d_b_potential_dot_dot_acoustic,
+    compute_add_sources_acoustic_omp_kernel(mp->d_b_potential_dot_dot_acoustic,
                                         mp->d_ibool,
                                         mp->d_sourcearrays,
                                         mp->d_source_time_function,
@@ -100,7 +100,7 @@ void compute_add_sources_ac_s3_omp_(long* Mesh_pointer, int* iphasef, int* itf)
 }
 
 // acoustic adjoint sources
-void add_sources_ac_SIM_TYPE_2_OR_3_kernel( realw* potential_dot_dot_acoustic,
+void add_sources_ac_SIM_TYPE_2_OR_3_omp_kernel( realw* potential_dot_dot_acoustic,
         realw* source_adjointe,
         realw* xir_store,
         realw* gammar_store,
@@ -141,7 +141,7 @@ void add_sources_ac_sim_2_or_3_omp_(long* Mesh_pointer,
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
     if (*iphasef != 1) return;
-    add_sources_ac_SIM_TYPE_2_OR_3_kernel( mp->d_potential_dot_dot_acoustic,
+    add_sources_ac_SIM_TYPE_2_OR_3_omp_kernel( mp->d_potential_dot_dot_acoustic,
                                            mp->d_source_adjointe,
                                            mp->d_xir_store_loc,
                                            mp->d_gammar_store_loc,

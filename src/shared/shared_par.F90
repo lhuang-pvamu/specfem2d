@@ -121,6 +121,7 @@ module shared_input_parameters
 
   ! computational platform type
   logical :: GPU_MODE
+  logical :: OMP_MODE
 
   ! creates/reads a binary database that allows to skip all time consuming setup steps in initialization
   ! 0 = does not read/create database

@@ -110,6 +110,7 @@
     call bcast_all_singlel(AXISYM)
     call bcast_all_singlel(P_SV)
     call bcast_all_singlel(GPU_MODE)
+    call bcast_all_singlel(OMP_MODE)
     call bcast_all_singlei(setup_with_binary_database)
 
     call bcast_all_string(MODEL)
@@ -377,6 +378,13 @@
   if (err_occurred() /= 0) then
     some_parameters_missing_from_Par_file = .true.
     write(*,'(a)') 'GPU_MODE                        = .false.'
+    write(*,*)
+  endif
+
+  call read_value_logical_p(OMP_MODE, 'OMP_MODE')
+  if (err_occurred() /= 0) then
+    some_parameters_missing_from_Par_file = .true.
+    write(*,'(a)') 'OMP_MODE                        = .false.'
     write(*,*)
   endif
 

@@ -37,7 +37,7 @@
 
 
 void
-compute_coupling_acoustic_el_kernel( realw* displ,
+compute_coupling_acoustic_el_omp_kernel( realw* displ,
                                      realw* potential_dot_dot_acoustic,
                                      int num_coupling_ac_el_faces,
                                      int* coupling_ac_el_ispec,
@@ -72,7 +72,7 @@ void compute_coupling_ac_el_omp_( long* Mesh_pointer, int* iphasef,
     // only add this contribution for first pass
     if (*iphasef != 1) return;
 
-    compute_coupling_acoustic_el_kernel( mp->d_displ,
+    compute_coupling_acoustic_el_omp_kernel( mp->d_displ,
                                          mp->d_potential_dot_dot_acoustic,
                                          *num_coupling_ac_el_facesf,
                                          mp->d_coupling_ac_el_ispec,
@@ -82,7 +82,7 @@ void compute_coupling_ac_el_omp_( long* Mesh_pointer, int* iphasef,
                                          mp->d_ibool);
     //  adjoint simulations
     if (mp->simulation_type == 3) {
-        compute_coupling_acoustic_el_kernel( mp->d_b_displ,
+        compute_coupling_acoustic_el_omp_kernel( mp->d_b_displ,
                                              mp->d_b_potential_dot_dot_acoustic,
                                              *num_coupling_ac_el_facesf,
                                              mp->d_coupling_ac_el_ispec,
@@ -95,7 +95,7 @@ void compute_coupling_ac_el_omp_( long* Mesh_pointer, int* iphasef,
 
 // ELASTIC - ACOUSTIC coupling
 void
-compute_coupling_elastic_ac_kernel( realw* potential_dot_dot_acoustic,
+compute_coupling_elastic_ac_omp_kernel( realw* potential_dot_dot_acoustic,
                                     realw* accel,
                                     int num_coupling_ac_el_faces,
                                     int* coupling_ac_el_ispec,
@@ -133,7 +133,7 @@ void compute_coupling_el_ac_omp( long* Mesh_pointer,
     // only add this contribution for first pass
     if (*iphasef != 1) return;
     int num_coupling_ac_el_faces  = *num_coupling_ac_el_facesf;
-    compute_coupling_elastic_ac_kernel( mp->d_potential_dot_dot_acoustic,
+    compute_coupling_elastic_ac_omp_kernel( mp->d_potential_dot_dot_acoustic,
                                         mp->d_accel,
                                         num_coupling_ac_el_faces,
                                         mp->d_coupling_ac_el_ispec,
@@ -143,7 +143,7 @@ void compute_coupling_el_ac_omp( long* Mesh_pointer,
                                         mp->d_ibool);
     //  adjoint simulations
     if (mp->simulation_type == 3) {
-        compute_coupling_elastic_ac_kernel( mp->d_b_potential_dot_dot_acoustic,
+        compute_coupling_elastic_ac_omp_kernel( mp->d_b_potential_dot_dot_acoustic,
                                             mp->d_b_accel,
                                             num_coupling_ac_el_faces,
                                             mp->d_coupling_ac_el_ispec,

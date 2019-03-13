@@ -7,6 +7,10 @@
 
 #define NDIM 2
 
+#define BLOCKSIZE_KERNEL1 32
+#define BLOCKSIZE_KERNEL3 128
+#define BLOCKSIZE_TRANSFER 256
+
 #define INDEX2(xsize,x,y) x + (y)*xsize
 #define INDEX3(xsize,ysize,x,y,z) x + xsize*(y + ysize*z)
 #define INDEX4(xsize,ysize,zsize,x,y,z,i) x + xsize*(y + ysize*(z + zsize*i))

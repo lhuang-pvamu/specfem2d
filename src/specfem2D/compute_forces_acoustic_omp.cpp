@@ -111,23 +111,23 @@ Kernel_2_acoustic_omp_impl( const int nb_blocks_to_compute,
 
 // KERNEL 2 - viscoacoustic compute forces kernel
 template<int FORWARD_OR_ADJOINT> void
-Kernel_2_viscoacoustic_impl(const int nb_blocks_to_compute,
-                            const int* d_ibool,
-                            const int* d_phase_ispec_inner_acoustic,
-                            const int num_phase_ispec_acoustic,
-                            const int d_iphase,
-                            realw_const_p d_potential_acoustic,
-                            realw_p d_potential_dot_dot_acoustic,
-                            const realw* d_xix, const realw* d_xiz,
-                            const realw* d_gammax,const realw* d_gammaz,
-                            realw_const_p d_hprime_xx,
-                            realw_const_p d_hprimewgll_xx,
-                            realw_const_p d_wxgll,
-                            const realw* d_rhostore,
-                            realw_p d_e1_acous,
-                            const realw* d_A_newmark,
-                            const realw* d_B_newmark,
-                            realw_p d_sum_forces_old)
+Kernel_2_viscoacoustic_omp_impl(const int nb_blocks_to_compute,
+                                const int* d_ibool,
+                                const int* d_phase_ispec_inner_acoustic,
+                                const int num_phase_ispec_acoustic,
+                                const int d_iphase,
+                                realw_const_p d_potential_acoustic,
+                                realw_p d_potential_dot_dot_acoustic,
+                                const realw* d_xix, const realw* d_xiz,
+                                const realw* d_gammax,const realw* d_gammaz,
+                                realw_const_p d_hprime_xx,
+                                realw_const_p d_hprimewgll_xx,
+                                realw_const_p d_wxgll,
+                                const realw* d_rhostore,
+                                realw_p d_e1_acous,
+                                const realw* d_A_newmark,
+                                const realw* d_B_newmark,
+                                realw_p d_sum_forces_old)
 {
     /*
         // block-id == number of local element id in phase_ispec array
@@ -274,7 +274,7 @@ void Kernel_2_acoustic_omp( int nb_blocks_to_compute, Mesh* mp, int d_iphase,
         }
     } else { // ATTENUATION_VISCOACOUSTIC== .true. below
         if (compute_wavefield_1) {
-            Kernel_2_viscoacoustic_impl<1>(nb_blocks_to_compute,
+            Kernel_2_viscoacoustic_omp_impl<1>(nb_blocks_to_compute,
                                            d_ibool,
                                            mp->d_phase_ispec_inner_acoustic,
                                            mp->num_phase_ispec_acoustic,
@@ -292,7 +292,7 @@ void Kernel_2_acoustic_omp( int nb_blocks_to_compute, Mesh* mp, int d_iphase,
                                            mp->d_sum_forces_old);
         }
         if (compute_wavefield_2) {
-            Kernel_2_viscoacoustic_impl<3>(nb_blocks_to_compute,
+            Kernel_2_viscoacoustic_omp_impl<3>(nb_blocks_to_compute,
                                            d_ibool,
                                            mp->d_phase_ispec_inner_acoustic,
                                            mp->num_phase_ispec_acoustic,

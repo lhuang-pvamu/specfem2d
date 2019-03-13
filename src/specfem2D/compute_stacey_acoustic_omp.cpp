@@ -36,7 +36,7 @@
 #include "mesh_constants_omp.h"
 
 
-void compute_stacey_acoustic_kernel( realw* potential_dot_acoustic,
+void compute_stacey_acoustic_omp_kernel( realw* potential_dot_acoustic,
                                      realw* potential_dot_dot_acoustic,
                                      int* abs_boundary_ispec,
                                      int* abs_boundary_ij,
@@ -163,7 +163,7 @@ void compute_stacey_acoustic_omp_( long* Mesh_pointer,
     // We have to distinguish between a UNDO_ATTENUATION_AND_OR_PML run or not to know if read/write operations are necessary
     int read_abs = (mp->simulation_type == 3 && (! *UNDO_ATTENUATION_AND_OR_PML)) ? 1 : 0;
     int write_abs = (mp->simulation_type == 1 && mp->save_forward && (! *UNDO_ATTENUATION_AND_OR_PML)) ? 1 : 0;
-    compute_stacey_acoustic_kernel( mp->d_potential_dot_acoustic,
+    compute_stacey_acoustic_omp_kernel( mp->d_potential_dot_acoustic,
                                     mp->d_potential_dot_dot_acoustic,
                                     mp->d_abs_boundary_ispec,
                                     mp->d_abs_boundary_ijk,
