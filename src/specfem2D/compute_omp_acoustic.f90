@@ -109,45 +109,46 @@ subroutine compute_forces_viscoacoustic_OMP(compute_b_wavefield_arg)
                     ! 1 == fwd accel
                     call transfer_boun_pot_from_device(Mesh_pointer, buffer_send_scalar_gpu, 1)
 
-                    call assemble_MPI_scalar_send_omp(NPROC, &
-                                                      buffer_send_scalar_gpu,buffer_recv_scalar_gpu, &
-                                                      ninterface,max_nibool_interfaces_ext_mesh, &
-                                                      nibool_interfaces_ext_mesh, &
-                                                      my_neighbors, &
-                                                      request_send_recv_scalar_gpu,ninterface_acoustic,inum_interfaces_acoustic)
+                    !TODO: add these openMP versions
+!                    call assemble_MPI_scalar_send_omp(NPROC, &
+!                                                      buffer_send_scalar_gpu,buffer_recv_scalar_gpu, &
+!                                                      ninterface,max_nibool_interfaces_ext_mesh, &
+!                                                      nibool_interfaces_ext_mesh, &
+!                                                      my_neighbors, &
+!                                                      request_send_recv_scalar_gpu,ninterface_acoustic,inum_interfaces_acoustic)
                 endif
                 ! adjoint simulations
                 if (compute_wavefield_2) then
                     ! 3 == adjoint b_accel
                     call transfer_boun_pot_from_device(Mesh_pointer, b_buffer_send_scalar_gpu, 3)
 
-                    call assemble_MPI_scalar_send_omp(NPROC, &
-                                                      b_buffer_send_scalar_gpu,b_buffer_recv_scalar_gpu, &
-                                                      ninterface,max_nibool_interfaces_ext_mesh, &
-                                                      nibool_interfaces_ext_mesh, &
-                                                      my_neighbors, &
-                                                      b_request_send_recv_scalar_gpu,ninterface_acoustic,inum_interfaces_acoustic)
+!                    call assemble_MPI_scalar_send_omp(NPROC, &
+!                                                      b_buffer_send_scalar_gpu,b_buffer_recv_scalar_gpu, &
+!                                                      ninterface,max_nibool_interfaces_ext_mesh, &
+!                                                      nibool_interfaces_ext_mesh, &
+!                                                      my_neighbors, &
+!                                                      b_request_send_recv_scalar_gpu,ninterface_acoustic,inum_interfaces_acoustic)
                 endif
-            else 
-                if ( compute_wavefield_1) &
+!            else 
+!                if ( compute_wavefield_1) &
                 ! waits for send/receive requests to be completed and assembles values
-                call assemble_MPI_scalar_write_omp(NPROC, &
-                                                   Mesh_pointer, &
-                                                   buffer_recv_scalar_gpu, &
-                                                   ninterface, &
-                                                   max_nibool_interfaces_ext_mesh, &
-                                                   request_send_recv_scalar_gpu, &
-                                                   1,ninterface_acoustic,inum_interfaces_acoustic)
+!                call assemble_MPI_scalar_write_omp(NPROC, &
+!                                                   Mesh_pointer, &
+!                                                   buffer_recv_scalar_gpu, &
+!                                                   ninterface, &
+!                                                   max_nibool_interfaces_ext_mesh, &
+!                                                   request_send_recv_scalar_gpu, &
+!                                                   1,ninterface_acoustic,inum_interfaces_acoustic)
                 ! adjoint simulations
-                if (compute_wavefield_2) then
-                    call assemble_MPI_scalar_write_omp(NPROC, &
-                                                       Mesh_pointer, &
-                                                       b_buffer_recv_scalar_gpu, &
-                                                       ninterface, &
-                                                       max_nibool_interfaces_ext_mesh, &
-                                                       b_request_send_recv_scalar_gpu, &
-                                                       3,ninterface_acoustic,inum_interfaces_acoustic)
-                endif
+!                if (compute_wavefield_2) then
+!                    call assemble_MPI_scalar_write_omp(NPROC, &
+!                                                       Mesh_pointer, &
+!                                                       b_buffer_recv_scalar_gpu, &
+!                                                       ninterface, &
+!                                                       max_nibool_interfaces_ext_mesh, &
+!                                                       b_request_send_recv_scalar_gpu, &
+!                                                       3,ninterface_acoustic,inum_interfaces_acoustic)
+!                endif
             endif !iphase
         endif !interface_acoustic
     enddo !iphase

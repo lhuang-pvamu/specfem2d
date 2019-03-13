@@ -65,7 +65,7 @@ compute_coupling_acoustic_el_kernel( realw* displ,
 }
 
 extern "C"
-void compute_coupling_ac_el_omp( long* Mesh_pointer, int* iphasef,
+void compute_coupling_ac_el_omp_( long* Mesh_pointer, int* iphasef,
                                  int* num_coupling_ac_el_facesf )
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
