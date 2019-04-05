@@ -33,25 +33,22 @@
 !========================================================================
 */
 
-#include "mesh_constants_cuda.h"
-#include "prepare_constants_cuda.h"
+#include "mesh_constants_omp.h"
+#include "prepare_constants_omp.h"
 
-
-// helper functions
 
 // copies integer array from CPU host to GPU device
-void copy_todevice_int(void** d_array_addr_ptr,int* h_array,int size){
-  cudaMalloc((void**)d_array_addr_ptr,size*sizeof(int)),
-  cudaMemcpy((int*) *d_array_addr_ptr,h_array,size*sizeof(int),cudaMemcpyHostToDevice);
+void copy_todevice_int(void** d_array_addr_ptr,int* h_array,int size)
+{
+    malloc((void**)d_array_addr_ptr,size*sizeof(int));
+    memcpy((int*) *d_array_addr_ptr,h_array,size*sizeof(int),memcpyHostToDevice);
 }
 
 // copies integer array from CPU host to GPU device
 void copy_todevice_realw(void** d_array_addr_ptr,realw* h_array,int size){
 
-  // allocates memory on GPU
-  cudaMalloc((void**)d_array_addr_ptr,size*sizeof(realw));
-  // copies values onto GPU
-  cudaMemcpy((realw*) *d_array_addr_ptr,h_array,size*sizeof(realw),cudaMemcpyHostToDevice);
+  malloc((void**)d_array_addr_ptr,size*sizeof(realw));
+  memcpy((realw*) *d_array_addr_ptr,h_array,size*sizeof(realw),memcpyHostToDevice);
 }
 
 extern "C"
@@ -93,7 +90,6 @@ void prepare_constants_device(long* Mesh_pointer,
                               int* SAVE_FORWARD,
                               realw* h_xir_store, realw* h_gammar_store)
 {
-    // allocates mesh parameter structure
     Mesh* mp = (Mesh*) malloc( sizeof(Mesh) );
     if (mp == NULL) exit_on_error("error allocating mesh pointer");
     *Mesh_pointer = (long)mp;
@@ -102,7 +98,6 @@ void prepare_constants_device(long* Mesh_pointer,
         exit_on_error("NGLLX defined in constants.h must match the NGLLX defined in src/cuda/mesh_constants_cuda.h");
     }
 
-    // sets processes mpi rank
     mp->myrank = *h_myrank;
 
     // sets global parameters
@@ -116,48 +111,45 @@ void prepare_constants_device(long* Mesh_pointer,
 
     // sets constant arrays
     setConst_hprime_xx(h_hprime_xx,mp);
-    // setConst_hprime_zz(h_hprime_zz,mp); // only needed if NGLLX != NGLLY != NGLLZ
 
     setConst_hprimewgll_xx(h_hprimewgll_xx,mp);
-    //setConst_hprimewgll_zz(h_hprimewgll_zz,mp); // only needed if NGLLX != NGLLY != NGLLZ
 
     setConst_wxgll(h_wxgll,mp);
 
-    // mesh
     // Assuming NGLLX=5. Padded is then 32 (5^2+3)
     int size_padded = NGLL2_PADDED * (mp->NSPEC_AB);
 
-    cudaMalloc((void**) &mp->d_xix, size_padded*sizeof(realw));
-    cudaMalloc((void**) &mp->d_xiz, size_padded*sizeof(realw));
-    cudaMalloc((void**) &mp->d_gammax, size_padded*sizeof(realw));
-    cudaMalloc((void**) &mp->d_gammaz, size_padded*sizeof(realw));
-    cudaMalloc((void**) &mp->d_kappav, size_padded*sizeof(realw));
-    cudaMalloc((void**) &mp->d_muv, size_padded*sizeof(realw));
+    malloc((void**) &mp->d_xix, size_padded*sizeof(realw));
+    malloc((void**) &mp->d_xiz, size_padded*sizeof(realw));
+    malloc((void**) &mp->d_gammax, size_padded*sizeof(realw));
+    malloc((void**) &mp->d_gammaz, size_padded*sizeof(realw));
+    malloc((void**) &mp->d_kappav, size_padded*sizeof(realw));
+    malloc((void**) &mp->d_muv, size_padded*sizeof(realw));
 
-    cudaMemcpy2D(mp->d_xix, NGLL2_PADDED*sizeof(realw),
+    memcpy2D(mp->d_xix, NGLL2_PADDED*sizeof(realw),
                 h_xix, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                mp->NSPEC_AB, cudaMemcpyHostToDevice);
-    cudaMemcpy2D(mp->d_xiz, NGLL2_PADDED*sizeof(realw),
+                mp->NSPEC_AB, memcpyHostToDevice);
+    memcpy2D(mp->d_xiz, NGLL2_PADDED*sizeof(realw),
                 h_xiz, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                mp->NSPEC_AB, cudaMemcpyHostToDevice);
-    cudaMemcpy2D(mp->d_gammax, NGLL2_PADDED*sizeof(realw),
+                mp->NSPEC_AB, memcpyHostToDevice);
+    memcpy2D(mp->d_gammax, NGLL2_PADDED*sizeof(realw),
                 h_gammax, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                mp->NSPEC_AB, cudaMemcpyHostToDevice);
-    cudaMemcpy2D(mp->d_gammaz, NGLL2_PADDED*sizeof(realw),
+                mp->NSPEC_AB, memcpyHostToDevice);
+    memcpy2D(mp->d_gammaz, NGLL2_PADDED*sizeof(realw),
                 h_gammaz, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                mp->NSPEC_AB, cudaMemcpyHostToDevice);
-    cudaMemcpy2D(mp->d_kappav, NGLL2_PADDED*sizeof(realw),
+                mp->NSPEC_AB, memcpyHostToDevice);
+    memcpy2D(mp->d_kappav, NGLL2_PADDED*sizeof(realw),
                 h_kappav, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                mp->NSPEC_AB, cudaMemcpyHostToDevice);
-    cudaMemcpy2D(mp->d_muv, NGLL2_PADDED*sizeof(realw),
+                mp->NSPEC_AB, memcpyHostToDevice);
+    memcpy2D(mp->d_muv, NGLL2_PADDED*sizeof(realw),
                 h_muv, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                mp->NSPEC_AB, cudaMemcpyHostToDevice);
+                mp->NSPEC_AB, memcpyHostToDevice);
 
     // global indexing (padded)
-    cudaMalloc((void**) &mp->d_ibool, size_padded*sizeof(int));
-    cudaMemcpy2D(mp->d_ibool, NGLL2_PADDED*sizeof(int),
+    malloc((void**) &mp->d_ibool, size_padded*sizeof(int));
+    memcpy2D(mp->d_ibool, NGLL2_PADDED*sizeof(int),
                 h_ibool, NGLL2*sizeof(int), NGLL2*sizeof(int),
-                mp->NSPEC_AB, cudaMemcpyHostToDevice);
+                mp->NSPEC_AB, memcpyHostToDevice);
 
     // prepare interprocess-edge exchange information
     mp->num_interfaces_ext_mesh = *num_interfaces_ext_mesh;
@@ -218,9 +210,10 @@ void prepare_constants_device(long* Mesh_pointer,
     mp->nrec_local = *nrec_local; // number of receiver located in this partition
     // note that: size of size(ispec_selected_rec_loc) = nrec_local
     if (mp->nrec_local > 0) {
-        cudaMalloc((void**)&mp->d_seismograms,2*(*NSTEP)*sizeof(realw)*(mp->nrec_local)*2);
+        malloc((void**)&mp->d_seismograms,2*(*NSTEP)*sizeof(realw)*(mp->nrec_local)*2);
         // pinned memory
-        cudaMallocHost((void**)&(mp->h_seismograms),2*(*NSTEP)*sizeof(realw)*(mp->nrec_local)*2);
+        //mallocHost
+        malloc((void**)&(mp->h_seismograms),2*(*NSTEP)*sizeof(realw)*(mp->nrec_local)*2);
         // host memory
         //mp->h_seismograms = (float*)malloc((mp->nrec_local)*2*sizeof(float));
         //if (mp->h_seismograms == NULL) exit_on_error("h_seismograms not allocated \n");
@@ -260,32 +253,31 @@ void prepare_fields_acoustic_device(long* Mesh_pointer,
 
     // allocates arrays on device (GPU)
     int size = mp->NGLOB_AB;
-    cudaMalloc((void**)&(mp->d_potential_acoustic),sizeof(realw)*size);
-    cudaMalloc((void**)&(mp->d_potential_dot_acoustic),sizeof(realw)*size);
-    cudaMalloc((void**)&(mp->d_potential_dot_dot_acoustic),sizeof(realw)*size);
+    malloc((void**)&(mp->d_potential_acoustic),sizeof(realw)*size);
+    malloc((void**)&(mp->d_potential_dot_acoustic),sizeof(realw)*size);
+    malloc((void**)&(mp->d_potential_dot_dot_acoustic),sizeof(realw)*size);
     // initializes values to zero
-    cudaMemset(mp->d_potential_acoustic,0,sizeof(realw)*size);
-    cudaMemset(mp->d_potential_dot_acoustic,0,sizeof(realw)*size);
-    cudaMemset(mp->d_potential_dot_dot_acoustic,0,sizeof(realw)*size);
+    memset(mp->d_potential_acoustic,0,sizeof(realw)*size);
+    memset(mp->d_potential_dot_acoustic,0,sizeof(realw)*size);
+    memset(mp->d_potential_dot_dot_acoustic,0,sizeof(realw)*size);
 
     // mpi buffer
     mp->size_mpi_buffer_potential = (mp->num_interfaces_ext_mesh) * (mp->max_nibool_interfaces_ext_mesh);
     if (mp->size_mpi_buffer_potential > 0) {
-        cudaMalloc((void**)&(mp->d_send_potential_dot_dot_buffer),mp->size_mpi_buffer_potential *sizeof(realw));
+        malloc((void**)&(mp->d_send_potential_dot_dot_buffer),mp->size_mpi_buffer_potential *sizeof(realw));
     }
 
     // mass matrix
     copy_todevice_realw((void**)&mp->d_rmass_acoustic,rmass_acoustic,mp->NGLOB_AB);
 
     // density
-    // padded array
     // Assuming NGLLX==5. Padded is then 32 (5^2+3)
     int size_padded = NGLL2_PADDED * mp->NSPEC_AB;
-    cudaMalloc((void**)&(mp->d_rhostore),size_padded*sizeof(realw));
+    malloc((void**)&(mp->d_rhostore),size_padded*sizeof(realw));
     // transfer constant element data with padding
-    cudaMemcpy2D(mp->d_rhostore, NGLL2_PADDED*sizeof(realw),
+    memcpy2D(mp->d_rhostore, NGLL2_PADDED*sizeof(realw),
                 rhostore, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                mp->NSPEC_AB, cudaMemcpyHostToDevice);
+                mp->NSPEC_AB, memcpyHostToDevice);
 
     // non-padded array
     copy_todevice_realw((void**)&mp->d_kappastore,kappastore,NGLL2*mp->NSPEC_AB);
@@ -307,10 +299,10 @@ void prepare_fields_acoustic_device(long* Mesh_pointer,
     if (mp->absorbing_conditions && mp->d_num_abs_boundary_faces > 0) {
         // absorb_field array used for file i/o
         if (mp->simulation_type == 3 || ( mp->simulation_type == 1 && mp->save_forward )){
-            cudaMalloc((void**)&mp->d_b_absorb_potential_left,mp->d_nspec_left*sizeof(realw)*NGLLX);
-            cudaMalloc((void**)&mp->d_b_absorb_potential_right,mp->d_nspec_right*sizeof(realw)*NGLLX);
-            cudaMalloc((void**)&mp->d_b_absorb_potential_top,mp->d_nspec_top*sizeof(realw)*NGLLX);
-            cudaMalloc((void**)&mp->d_b_absorb_potential_bottom,mp->d_nspec_bottom*sizeof(realw)*NGLLX);
+            malloc((void**)&mp->d_b_absorb_potential_left,mp->d_nspec_left*sizeof(realw)*NGLLX);
+            malloc((void**)&mp->d_b_absorb_potential_right,mp->d_nspec_right*sizeof(realw)*NGLLX);
+            malloc((void**)&mp->d_b_absorb_potential_top,mp->d_nspec_top*sizeof(realw)*NGLLX);
+            malloc((void**)&mp->d_b_absorb_potential_bottom,mp->d_nspec_bottom*sizeof(realw)*NGLLX);
 
         }
     }
@@ -331,14 +323,14 @@ void prepare_fields_acoustic_device(long* Mesh_pointer,
     if (*ATTENUATION_VISCOACOUSTIC) {
         copy_todevice_realw((void**)&mp->d_A_newmark_acous,h_A_newmark,NGLL2*mp->NSPEC_AB*N_SLS);
         copy_todevice_realw((void**)&mp->d_B_newmark_acous,h_B_newmark,NGLL2*mp->NSPEC_AB*N_SLS);
-        cudaMalloc((void**)&mp->d_e1_acous,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
-        cudaMemset(mp->d_e1_acous,0,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
-        cudaMalloc((void**)&mp->d_sum_forces_old,mp->NSPEC_AB*sizeof(realw)*NGLL2);
-        cudaMemset(mp->d_sum_forces_old,0,mp->NSPEC_AB*sizeof(realw)*NGLL2);
+        malloc((void**)&mp->d_e1_acous,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
+        memset(mp->d_e1_acous,0,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
+        malloc((void**)&mp->d_sum_forces_old,mp->NSPEC_AB*sizeof(realw)*NGLL2);
+        memset(mp->d_sum_forces_old,0,mp->NSPEC_AB*sizeof(realw)*NGLL2);
     }
 
     if (*NO_BACKWARD_RECONSTRUCTION){
-        cudaMalloc((void**)&(mp->d_potential_acoustic_buffer),mp->NGLOB_AB*sizeof(realw));
+        malloc((void**)&(mp->d_potential_acoustic_buffer),mp->NGLOB_AB*sizeof(realw));
         cudaStreamCreateWithFlags(&mp->copy_stream_no_backward,cudaStreamNonBlocking);
         cudaHostRegister(h_no_backward_acoustic_buffer,3*mp->NGLOB_AB*sizeof(realw),0);
         cudaEventCreate(&mp->transfer_is_complete1);
@@ -359,44 +351,36 @@ void prepare_fields_acoustic_adj_dev(long* Mesh_pointer,
 
     // allocates backward/reconstructed arrays on device (GPU)
     int size = mp->NGLOB_AB * sizeof(realw);
-    cudaMalloc((void**)&(mp->d_b_potential_acoustic),size);
+    malloc((void**)&(mp->d_b_potential_acoustic),size);
     if (! *NO_BACKWARD_RECONSTRUCTION){
-        cudaMalloc((void**)&(mp->d_b_potential_dot_acoustic),size);
-        cudaMalloc((void**)&(mp->d_b_potential_dot_dot_acoustic),size);
+        malloc((void**)&(mp->d_b_potential_dot_acoustic),size);
+        malloc((void**)&(mp->d_b_potential_dot_dot_acoustic),size);
     }
-    // initializes values to zero
-    //cudaMemset(mp->d_b_potential_acoustic,0,size),3007);
-    //cudaMemset(mp->d_b_potential_dot_acoustic,0,size),3007);
-    //cudaMemset(mp->d_b_potential_dot_dot_acoustic,0,size),3007);
-
 
     // allocates kernels
     size = NGLL2 * mp->NSPEC_AB * sizeof(realw);
-    cudaMalloc((void**)&(mp->d_rho_ac_kl),size);
-    cudaMalloc((void**)&(mp->d_kappa_ac_kl),size);
-    // initializes kernel values to zero
-    cudaMemset(mp->d_rho_ac_kl,0,size);
-    cudaMemset(mp->d_kappa_ac_kl,0,size);
+    malloc((void**)&(mp->d_rho_ac_kl),size);
+    malloc((void**)&(mp->d_kappa_ac_kl),size);
+    memset(mp->d_rho_ac_kl,0,size);
+    memset(mp->d_kappa_ac_kl,0,size);
 
     // preconditioner
     if (*APPROXIMATE_HESS_KL) {
-        cudaMalloc((void**)&(mp->d_hess_ac_kl),size);
-        // initializes with zeros
-        cudaMemset(mp->d_hess_ac_kl,0,size);
+        malloc((void**)&(mp->d_hess_ac_kl),size);
+        memset(mp->d_hess_ac_kl,0,size);
     }
 
     if (*ATTENUATION_VISCOACOUSTIC && (! *NO_BACKWARD_RECONSTRUCTION) ) {
-        cudaMalloc((void**)&(mp->d_b_sum_forces_old),size);
-        cudaMalloc((void**)&(mp->d_b_e1_acous),size*N_SLS);
+        malloc((void**)&(mp->d_b_sum_forces_old),size);
+        malloc((void**)&(mp->d_b_e1_acous),size*N_SLS);
     }
 
     // mpi buffer
     if (mp->size_mpi_buffer_potential > 0 && (! *NO_BACKWARD_RECONSTRUCTION)) {
-        cudaMalloc((void**)&(mp->d_b_send_potential_dot_dot_buffer),mp->size_mpi_buffer_potential*sizeof(realw));
+        malloc((void**)&(mp->d_b_send_potential_dot_dot_buffer),mp->size_mpi_buffer_potential*sizeof(realw));
     }
 }
 
-// for ELASTIC simulations
 extern "C"
 void prepare_fields_elastic_device(long* Mesh_pointer,
                                    realw* rmassx, realw* rmassz,
@@ -422,40 +406,30 @@ void prepare_fields_elastic_device(long* Mesh_pointer,
 
     // elastic wavefields
     size = NDIM * mp->NGLOB_AB;
-    cudaMalloc((void**)&(mp->d_displ),sizeof(realw)*size);
-    cudaMalloc((void**)&(mp->d_veloc),sizeof(realw)*size);
-    cudaMalloc((void**)&(mp->d_accel),sizeof(realw)*size);
+    malloc((void**)&(mp->d_displ),sizeof(realw)*size);
+    malloc((void**)&(mp->d_veloc),sizeof(realw)*size);
+    malloc((void**)&(mp->d_accel),sizeof(realw)*size);
 
     // MPI buffer
     mp->size_mpi_buffer = NDIM * (mp->num_interfaces_ext_mesh) * (mp->max_nibool_interfaces_ext_mesh);
     if (mp->size_mpi_buffer > 0) {
-        // note: Allocate pinned mpi-buffers.
-        //       MPI buffers use pinned memory allocated by cudaMallocHost, which
-        //       enables the use of asynchronous memory copies from host <-> device
-        // send buffer
-        cudaMallocHost((void**)&(mp->h_send_accel_buffer),sizeof(realw)*(mp->size_mpi_buffer));
-        //mp->send_buffer = (float*)malloc((mp->size_mpi_buffer)*sizeof(float));
-        // adjoint
-        //cudaMallocHost((void**)&(mp->h_send_b_accel_buffer),sizeof(float)*(mp->size_mpi_buffer)),8004);
-        // mp->b_send_buffer = (float*)malloc((size_mpi_buffer)*sizeof(float));
-        // receive buffer
-        cudaMallocHost((void**)&(mp->h_recv_accel_buffer),sizeof(realw)*(mp->size_mpi_buffer));
+        // Allocate pinned mpi-buffers.
+        //mallocHost
+        malloc((void**)&(mp->h_send_accel_buffer),sizeof(realw)*(mp->size_mpi_buffer));
+        //mallocHost
+        malloc((void**)&(mp->h_recv_accel_buffer),sizeof(realw)*(mp->size_mpi_buffer));
         //mp->recv_buffer = (float*)malloc((mp->size_mpi_buffer)*sizeof(float));
 
         // non-pinned buffer
-        cudaMalloc((void**)&(mp->d_send_accel_buffer),mp->size_mpi_buffer*sizeof(realw));
-        cudaMalloc((void**)&(mp->d_recv_accel_buffer),mp->size_mpi_buffer*sizeof(realw));
+        malloc((void**)&(mp->d_send_accel_buffer),mp->size_mpi_buffer*sizeof(realw));
+        malloc((void**)&(mp->d_recv_accel_buffer),mp->size_mpi_buffer*sizeof(realw));
 
         // adjoint
         if (mp->simulation_type == 3) {
-            cudaMalloc((void**)&(mp->d_b_send_accel_buffer),mp->size_mpi_buffer*sizeof(realw));
-            cudaMalloc((void**)&(mp->d_b_recv_accel_buffer),mp->size_mpi_buffer*sizeof(realw));
+            malloc((void**)&(mp->d_b_send_accel_buffer),mp->size_mpi_buffer*sizeof(realw));
+            malloc((void**)&(mp->d_b_recv_accel_buffer),mp->size_mpi_buffer*sizeof(realw));
         }
     }
-
-    // debug
-    //printf("prepare_fields_elastic_device: rank %d - mass matrix\n",mp->myrank);
-    //synchronize_mpi();
 
     // mass matrix
     copy_todevice_realw((void**)&mp->d_rmassx,rmassx,mp->NGLOB_AB);
@@ -469,15 +443,8 @@ void prepare_fields_elastic_device(long* Mesh_pointer,
 
     copy_todevice_int((void**)&mp->d_phase_ispec_inner_elastic,phase_ispec_inner_elastic,2*mp->num_phase_ispec_elastic);
 
-    // debug
-    //synchronize_mpi();
-
     // absorbing conditions
     if (mp->absorbing_conditions && mp->d_num_abs_boundary_faces > 0){
-
-        // debug
-        //printf("prepare_fields_elastic_device: rank %d - absorbing boundary setup\n",mp->myrank);
-
         // non-padded arrays
         // rho_vp, rho_vs non-padded; they are needed for stacey boundary condition
         copy_todevice_realw((void**)&mp->d_rho_vp,rho_vp,NGLL2*mp->NSPEC_AB);
@@ -488,70 +455,62 @@ void prepare_fields_elastic_device(long* Mesh_pointer,
             // absorb_field array used for file i/o
             if (mp->simulation_type == 3 || ( mp->simulation_type == 1 && mp->save_forward )){
                 mp->d_nspec_left = *h_nspec_left;
-                cudaMalloc((void**)&mp->d_b_absorb_elastic_left,2*mp->d_nspec_left*sizeof(realw)*NGLLX);
+                malloc((void**)&mp->d_b_absorb_elastic_left,2*mp->d_nspec_left*sizeof(realw)*NGLLX);
 
                 mp->d_nspec_right = *h_nspec_right;
-                cudaMalloc((void**)&mp->d_b_absorb_elastic_right,2*mp->d_nspec_right*sizeof(realw)*NGLLX);
+                malloc((void**)&mp->d_b_absorb_elastic_right,2*mp->d_nspec_right*sizeof(realw)*NGLLX);
 
                 mp->d_nspec_top = *h_nspec_top;
-                cudaMalloc((void**)&mp->d_b_absorb_elastic_top,2*mp->d_nspec_top*sizeof(realw)*NGLLX);
+                malloc((void**)&mp->d_b_absorb_elastic_top,2*mp->d_nspec_top*sizeof(realw)*NGLLX);
 
                 mp->d_nspec_bottom = *h_nspec_bottom;
-                cudaMalloc((void**)&mp->d_b_absorb_elastic_bottom,2*mp->d_nspec_bottom*sizeof(realw)*NGLLX);
+                malloc((void**)&mp->d_b_absorb_elastic_bottom,2*mp->d_nspec_bottom*sizeof(realw)*NGLLX);
             }
         }
     }
-
-    // debug
-    //synchronize_mpi();
-
     // anisotropy
     if (*ANISOTROPY) {
-        // debug
-        //printf("prepare_fields_elastic_device: rank %d - attenuation setup\n",mp->myrank);
-        //synchronize_mpi();
-
         // Assuming NGLLX==5. Padded is then 32 (5^2+3)
         size_padded = NGLL2_PADDED * (mp->NSPEC_AB);
 
         // allocates memory on GPU
-        cudaMalloc((void**)&(mp->d_c11store),size_padded*sizeof(realw));
-        cudaMalloc((void**)&(mp->d_c12store),size_padded*sizeof(realw));
-        cudaMalloc((void**)&(mp->d_c13store),size_padded*sizeof(realw));
-        cudaMalloc((void**)&(mp->d_c15store),size_padded*sizeof(realw));
-        cudaMalloc((void**)&(mp->d_c23store),size_padded*sizeof(realw));
-        cudaMalloc((void**)&(mp->d_c25store),size_padded*sizeof(realw));
-        cudaMalloc((void**)&(mp->d_c33store),size_padded*sizeof(realw));
-        cudaMalloc((void**)&(mp->d_c35store),size_padded*sizeof(realw));
-        cudaMalloc((void**)&(mp->d_c55store),size_padded*sizeof(realw));
+        malloc((void**)&(mp->d_c11store),size_padded*sizeof(realw));
+        malloc((void**)&(mp->d_c12store),size_padded*sizeof(realw));
+        malloc((void**)&(mp->d_c13store),size_padded*sizeof(realw));
+        malloc((void**)&(mp->d_c15store),size_padded*sizeof(realw));
+        malloc((void**)&(mp->d_c23store),size_padded*sizeof(realw));
+        malloc((void**)&(mp->d_c25store),size_padded*sizeof(realw));
+        malloc((void**)&(mp->d_c33store),size_padded*sizeof(realw));
+        malloc((void**)&(mp->d_c35store),size_padded*sizeof(realw));
+        malloc((void**)&(mp->d_c55store),size_padded*sizeof(realw));
 
-        cudaMemcpy2D(mp->d_c11store, NGLL2_PADDED*sizeof(realw),
+        memcpy2D(mp->d_c11store, NGLL2_PADDED*sizeof(realw),
                     c11store, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                    mp->NSPEC_AB, cudaMemcpyHostToDevice);
-        cudaMemcpy2D(mp->d_c12store, NGLL2_PADDED*sizeof(realw),
+                    mp->NSPEC_AB, memcpyHostToDevice);
+        memcpy2D(mp->d_c12store, NGLL2_PADDED*sizeof(realw),
                     c12store, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                    mp->NSPEC_AB, cudaMemcpyHostToDevice);
-        cudaMemcpy2D(mp->d_c13store, NGLL2_PADDED*sizeof(realw),
+                    mp->NSPEC_AB, memcpyHostToDevice);
+        memcpy2D(mp->d_c13store, NGLL2_PADDED*sizeof(realw),
                     c13store, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                    mp->NSPEC_AB, cudaMemcpyHostToDevice);
-        cudaMemcpy2D(mp->d_c15store, NGLL2_PADDED*sizeof(realw),
+                    mp->NSPEC_AB, memcpyHostToDevice);
+        memcpy2D(mp->d_c15store, NGLL2_PADDED*sizeof(realw),
                     c15store, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                    mp->NSPEC_AB, cudaMemcpyHostToDevice);
-        cudaMemcpy2D(mp->d_c23store, NGLL2_PADDED*sizeof(realw),
+                    mp->NSPEC_AB, memcpyHostToDevice);
+        memcpy2D(mp->d_c23store, NGLL2_PADDED*sizeof(realw),
                     c23store, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                    mp->NSPEC_AB, cudaMemcpyHostToDevice);
-        cudaMemcpy2D(mp->d_c25store, NGLL2_PADDED*sizeof(realw),
+                    mp->NSPEC_AB, memcpyHostToDevice);
+        memcpy2D(mp->d_c25store, NGLL2_PADDED*sizeof(realw),
                     c25store, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                    mp->NSPEC_AB, cudaMemcpyHostToDevice);
-        cudaMemcpy2D(mp->d_c33store, NGLL2_PADDED*sizeof(realw),
+                    mp->NSPEC_AB, memcpyHostToDevice);
+        memcpy2D(mp->d_c33store, NGLL2_PADDED*sizeof(realw),
                     c33store, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                    mp->NSPEC_AB, cudaMemcpyHostToDevice);
-        cudaMemcpy2D(mp->d_c35store, NGLL2_PADDED*sizeof(realw),
+                    mp->NSPEC_AB, memcpyHostToDevice);
+        memcpy2D(mp->d_c35store, NGLL2_PADDED*sizeof(realw),
                     c35store, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                    mp->NSPEC_AB, cudaMemcpyHostToDevice);
-        cudaMemcpy2D(mp->d_c55store, NGLL2_PADDED*sizeof(realw),
+                    mp->NSPEC_AB, memcpyHostToDevice);
+        memcpy2D(mp->d_c55store, NGLL2_PADDED*sizeof(realw),
                     c55store, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                    mp->NSPEC_AB, cudaMemcpyHostToDevice);
+                    mp->NSPEC_AB, memcpyHostToDevice);
     }
 
     mp->ninterface_elastic = *h_ninterface_elastic;
@@ -563,18 +522,18 @@ void prepare_fields_elastic_device(long* Mesh_pointer,
         copy_todevice_realw((void**)&mp->d_B_newmark_mu,h_B_newmark_mu,NGLL2*mp->NSPEC_AB*N_SLS);
         copy_todevice_realw((void**)&mp->d_A_newmark_kappa,h_A_newmark_kappa,NGLL2*mp->NSPEC_AB*N_SLS);
         copy_todevice_realw((void**)&mp->d_B_newmark_kappa,h_B_newmark_kappa,NGLL2*mp->NSPEC_AB*N_SLS);
-        cudaMalloc((void**)&mp->d_e1,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
-        cudaMemset(mp->d_e1,0,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
-        cudaMalloc((void**)&mp->d_e11,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
-        cudaMemset(mp->d_e11,0,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
-        cudaMalloc((void**)&mp->d_e13,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
-        cudaMemset(mp->d_e13,0,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
-        cudaMalloc((void**)&mp->d_dux_dxl_old,mp->NSPEC_AB*sizeof(realw)*NGLL2);
-        cudaMemset(mp->d_dux_dxl_old,0,mp->NSPEC_AB*sizeof(realw)*NGLL2);
-        cudaMalloc((void**)&mp->d_duz_dzl_old,mp->NSPEC_AB*sizeof(realw)*NGLL2);
-        cudaMemset(mp->d_duz_dzl_old,0,mp->NSPEC_AB*sizeof(realw)*NGLL2);
-        cudaMalloc((void**)&mp->d_dux_dzl_plus_duz_dxl_old,mp->NSPEC_AB*sizeof(realw)*NGLL2);
-        cudaMemset(mp->d_dux_dzl_plus_duz_dxl_old,0,mp->NSPEC_AB*sizeof(realw)*NGLL2);
+        malloc((void**)&mp->d_e1,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
+        memset(mp->d_e1,0,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
+        malloc((void**)&mp->d_e11,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
+        memset(mp->d_e11,0,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
+        malloc((void**)&mp->d_e13,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
+        memset(mp->d_e13,0,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
+        malloc((void**)&mp->d_dux_dxl_old,mp->NSPEC_AB*sizeof(realw)*NGLL2);
+        memset(mp->d_dux_dxl_old,0,mp->NSPEC_AB*sizeof(realw)*NGLL2);
+        malloc((void**)&mp->d_duz_dzl_old,mp->NSPEC_AB*sizeof(realw)*NGLL2);
+        memset(mp->d_duz_dzl_old,0,mp->NSPEC_AB*sizeof(realw)*NGLL2);
+        malloc((void**)&mp->d_dux_dzl_plus_duz_dxl_old,mp->NSPEC_AB*sizeof(realw)*NGLL2);
+        memset(mp->d_dux_dzl_plus_duz_dxl_old,0,mp->NSPEC_AB*sizeof(realw)*NGLL2);
     }
 }
 
@@ -584,55 +543,43 @@ void prepare_fields_elastic_adj_dev(long* Mesh_pointer,
                                     int* APPROXIMATE_HESS_KL)
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer);
-    int size;
-
-    // checks if kernel simulation
     if (mp->simulation_type != 3 ) return;
 
     // kernel simulations
-    // debug
-    //printf("prepare_fields_elastic_adj_dev: rank %d - kernel setup\n",mp->myrank);
-    //synchronize_mpi();
-
     // backward/reconstructed wavefields
-    // allocates backward/reconstructed arrays on device (GPU)
-    size = *size_f;
-    cudaMalloc((void**)&(mp->d_b_displ),sizeof(realw)*size);
-    cudaMalloc((void**)&(mp->d_b_veloc),sizeof(realw)*size);
-    cudaMalloc((void**)&(mp->d_b_accel),sizeof(realw)*size);
+    int size = *size_f;
+    malloc((void**)&(mp->d_b_displ),sizeof(realw)*size);
+    malloc((void**)&(mp->d_b_veloc),sizeof(realw)*size);
+    malloc((void**)&(mp->d_b_accel),sizeof(realw)*size);
 
     // anisotropic/isotropic kernels
 
     // allocates kernels
     size = NGLL2 * mp->NSPEC_AB; // note: non-aligned; if align, check memcpy below and indexing
     // density kernel
-    cudaMalloc((void**)&(mp->d_rho_kl),size*sizeof(realw));
+    malloc((void**)&(mp->d_rho_kl),size*sizeof(realw));
     // initializes kernel values to zero
-    cudaMemset(mp->d_rho_kl,0,size*sizeof(realw));
+    memset(mp->d_rho_kl,0,size*sizeof(realw));
 
 
     // isotropic kernels
-    cudaMalloc((void**)&(mp->d_mu_kl),size*sizeof(realw));
-    cudaMalloc((void**)&(mp->d_kappa_kl),size*sizeof(realw));
-    cudaMemset(mp->d_mu_kl,0,size*sizeof(realw));
-    cudaMemset(mp->d_kappa_kl,0,size*sizeof(realw));
+    malloc((void**)&(mp->d_mu_kl),size*sizeof(realw));
+    malloc((void**)&(mp->d_kappa_kl),size*sizeof(realw));
+    memset(mp->d_mu_kl,0,size*sizeof(realw));
+    memset(mp->d_kappa_kl,0,size*sizeof(realw));
 
-    cudaMalloc((void**)&(mp->d_dsxx),size*sizeof(realw));
-    cudaMalloc((void**)&(mp->d_dsxz),size*sizeof(realw));
-    cudaMalloc((void**)&(mp->d_dszz),size*sizeof(realw));
-    cudaMalloc((void**)&(mp->d_b_dsxx),size*sizeof(realw));
-    cudaMalloc((void**)&(mp->d_b_dsxz),size*sizeof(realw));
-    cudaMalloc((void**)&(mp->d_b_dszz),size*sizeof(realw));
+    malloc((void**)&(mp->d_dsxx),size*sizeof(realw));
+    malloc((void**)&(mp->d_dsxz),size*sizeof(realw));
+    malloc((void**)&(mp->d_dszz),size*sizeof(realw));
+    malloc((void**)&(mp->d_b_dsxx),size*sizeof(realw));
+    malloc((void**)&(mp->d_b_dsxz),size*sizeof(realw));
+    malloc((void**)&(mp->d_b_dszz),size*sizeof(realw));
 
     // approximate hessian kernel
     if (*APPROXIMATE_HESS_KL) {
-        // debug
-        //printf("prepare_fields_elastic_adj_dev: rank %d - hessian kernel\n",mp->myrank);
-        //synchronize_mpi();
-
         size = NGLL2 * mp->NSPEC_AB; // note: non-aligned; if align, check memcpy below and indexing
-        cudaMalloc((void**)&(mp->d_hess_el_kl),size*sizeof(realw));
-        cudaMemset(mp->d_hess_el_kl,0,size*sizeof(realw));
+        malloc((void**)&(mp->d_hess_el_kl),size*sizeof(realw));
+        memset(mp->d_hess_el_kl,0,size*sizeof(realw));
     }
 }
 
@@ -648,13 +595,12 @@ void prepare_sim2_or_3_const_device(long* Mesh_pointer,
     // adjoint source arrays
     mp->nadj_rec_local = *nadj_rec_local;
     if (mp->nadj_rec_local > 0) {
-        cudaMalloc((void**)&mp->d_adj_sourcearrays,(mp->nadj_rec_local)*2*NGLL2*sizeof(realw));
+        malloc((void**)&mp->d_adj_sourcearrays,(mp->nadj_rec_local)*2*NGLL2*sizeof(realw));
 
         copy_todevice_realw((void**)&mp->d_source_adjointe,h_source_adjointe,(*NSTEP)*(*nadj_rec_local)*NDIM);
     }
 }
 
-// cleanup
 extern "C"
 void prepare_cleanup_device(long* Mesh_pointer,
                             int* ACOUSTIC_SIMULATION,
@@ -667,190 +613,177 @@ void prepare_cleanup_device(long* Mesh_pointer,
                             int* NO_BACKWARD_RECONSTRUCTION,
                             realw * h_no_backward_acoustic_buffer)
 {
-    // frees allocated memory arrays
     Mesh* mp = (Mesh*)(*Mesh_pointer);
 
-    // frees memory on GPU
     // mesh
-    cudaFree(mp->d_xix);
-    cudaFree(mp->d_xiz);
-    cudaFree(mp->d_gammax);
-    cudaFree(mp->d_gammaz);
-    cudaFree(mp->d_muv);
-    cudaFree(mp->d_kappav);
+    free(mp->d_xix);
+    free(mp->d_xiz);
+    free(mp->d_gammax);
+    free(mp->d_gammaz);
+    free(mp->d_muv);
+    free(mp->d_kappav);
 
     // absorbing boundaries
     if (*ABSORBING_CONDITIONS && mp->d_num_abs_boundary_faces > 0) {
-        cudaFree(mp->d_abs_boundary_ispec);
-        cudaFree(mp->d_abs_boundary_ijk);
-        cudaFree(mp->d_abs_boundary_normal);
-        cudaFree(mp->d_abs_boundary_jacobian2Dw);
-        cudaFree(mp->d_cote_abs);
-        cudaFree(mp->d_ib_left);
-        cudaFree(mp->d_ib_right);
-        cudaFree(mp->d_ib_top);
-        cudaFree(mp->d_ib_bottom);
+        free(mp->d_abs_boundary_ispec);
+        free(mp->d_abs_boundary_ijk);
+        free(mp->d_abs_boundary_normal);
+        free(mp->d_abs_boundary_jacobian2Dw);
+        free(mp->d_cote_abs);
+        free(mp->d_ib_left);
+        free(mp->d_ib_right);
+        free(mp->d_ib_top);
+        free(mp->d_ib_bottom);
     }
-
     // interfaces
     if (mp->num_interfaces_ext_mesh > 0) {
-        cudaFree(mp->d_nibool_interfaces_ext_mesh);
-        cudaFree(mp->d_ibool_interfaces_ext_mesh);
+        free(mp->d_nibool_interfaces_ext_mesh);
+        free(mp->d_ibool_interfaces_ext_mesh);
     }
-
     // global indexing
-    cudaFree(mp->d_ispec_is_inner);
-    cudaFree(mp->d_ibool);
-
+    free(mp->d_ispec_is_inner);
+    free(mp->d_ibool);
     // sources
     if (mp->nsources_local > 0){
-        cudaFree(mp->d_sourcearrays);
-        cudaFree(mp->d_source_time_function);
-        cudaFree(mp->d_ispec_selected_source);
+        free(mp->d_sourcearrays);
+        free(mp->d_source_time_function);
+        free(mp->d_ispec_selected_source);
     }
-
     // receivers
     if (mp->nrec_local > 0) {
-        cudaFree(mp->d_seismograms);
-        cudaFree(mp->d_cosrot),cudaFree(mp->d_sinrot);
-        cudaFree(mp->d_gammar_store_loc);
-        cudaFree(mp->d_xir_store_loc);
-        cudaFree(mp->d_ispec_selected_rec_loc);
-        cudaFreeHost(mp->h_seismograms);
+        free(mp->d_seismograms);
+        free(mp->d_cosrot),free(mp->d_sinrot);
+        free(mp->d_gammar_store_loc);
+        free(mp->d_xir_store_loc);
+        free(mp->d_ispec_selected_rec_loc);
+        freeHost(mp->h_seismograms);
     }
-
     // ACOUSTIC arrays
     if (*ACOUSTIC_SIMULATION) {
-        cudaFree(mp->d_potential_acoustic);
-        cudaFree(mp->d_potential_dot_acoustic);
-        cudaFree(mp->d_potential_dot_dot_acoustic);
-        if (mp->size_mpi_buffer_potential > 0 ) cudaFree(mp->d_send_potential_dot_dot_buffer);
-        cudaFree(mp->d_rmass_acoustic);
-        cudaFree(mp->d_rhostore);
-        cudaFree(mp->d_kappastore);
-        cudaFree(mp->d_phase_ispec_inner_acoustic);
-        cudaFree(mp->d_ispec_is_acoustic);
-        cudaFree(mp->d_inum_interfaces_acoustic);
+        free(mp->d_potential_acoustic);
+        free(mp->d_potential_dot_acoustic);
+        free(mp->d_potential_dot_dot_acoustic);
+        if (mp->size_mpi_buffer_potential > 0 ) free(mp->d_send_potential_dot_dot_buffer);
+        free(mp->d_rmass_acoustic);
+        free(mp->d_rhostore);
+        free(mp->d_kappastore);
+        free(mp->d_phase_ispec_inner_acoustic);
+        free(mp->d_ispec_is_acoustic);
+        free(mp->d_inum_interfaces_acoustic);
 
         if (*NO_BACKWARD_RECONSTRUCTION){
-            cudaFree(mp->d_potential_acoustic_buffer);
+            free(mp->d_potential_acoustic_buffer);
             cudaHostUnregister(h_no_backward_acoustic_buffer);
             cudaEventDestroy(mp->transfer_is_complete1);
             cudaEventDestroy(mp->transfer_is_complete2);
 
         }
         if (mp->simulation_type == 3) {
-            cudaFree(mp->d_b_potential_acoustic);
+            free(mp->d_b_potential_acoustic);
             if (! *NO_BACKWARD_RECONSTRUCTION){
-                cudaFree(mp->d_b_potential_dot_acoustic);
-                cudaFree(mp->d_b_potential_dot_dot_acoustic);
+                free(mp->d_b_potential_dot_acoustic);
+                free(mp->d_b_potential_dot_dot_acoustic);
             }
-            cudaFree(mp->d_rho_ac_kl);
-            cudaFree(mp->d_kappa_ac_kl);
-            if (*APPROXIMATE_HESS_KL) cudaFree(mp->d_hess_ac_kl);
-            if (mp->size_mpi_buffer_potential > 0 && ! *NO_BACKWARD_RECONSTRUCTION) cudaFree(mp->d_b_send_potential_dot_dot_buffer);
+            free(mp->d_rho_ac_kl);
+            free(mp->d_kappa_ac_kl);
+            if (*APPROXIMATE_HESS_KL) free(mp->d_hess_ac_kl);
+            if (mp->size_mpi_buffer_potential > 0 && ! *NO_BACKWARD_RECONSTRUCTION) free(mp->d_b_send_potential_dot_dot_buffer);
             if (*ATTENUATION_VISCOACOUSTIC && ! *NO_BACKWARD_RECONSTRUCTION) {
-                cudaFree(mp->d_b_sum_forces_old);
-                cudaFree(mp->d_b_e1_acous);
+                free(mp->d_b_sum_forces_old);
+                free(mp->d_b_e1_acous);
             }
         }
-
         if (*ABSORBING_CONDITIONS && mp->d_num_abs_boundary_faces > 0){
             if (mp->simulation_type == 3 || ( mp->simulation_type == 1 && mp->save_forward )){
-                cudaFree(mp->d_b_absorb_potential_bottom);
-                cudaFree(mp->d_b_absorb_potential_left);
-                cudaFree(mp->d_b_absorb_potential_right);
-                cudaFree(mp->d_b_absorb_potential_top);
+                free(mp->d_b_absorb_potential_bottom);
+                free(mp->d_b_absorb_potential_left);
+                free(mp->d_b_absorb_potential_right);
+                free(mp->d_b_absorb_potential_top);
             }
         }
         if (*ATTENUATION_VISCOACOUSTIC){
-            cudaFree(mp->d_e1_acous);
-            cudaFree(mp->d_A_newmark_acous);
-            cudaFree(mp->d_B_newmark_acous);
-            cudaFree(mp->d_sum_forces_old);
+            free(mp->d_e1_acous);
+            free(mp->d_A_newmark_acous);
+            free(mp->d_B_newmark_acous);
+            free(mp->d_sum_forces_old);
         }
 
-    } // ACOUSTIC_SIMULATION
-
+    } 
     // ELASTIC arrays
     if (*ELASTIC_SIMULATION) {
-        cudaFree(mp->d_displ);
-        cudaFree(mp->d_veloc);
-        cudaFree(mp->d_accel);
+        free(mp->d_displ);
+        free(mp->d_veloc);
+        free(mp->d_accel);
 
         if (mp->size_mpi_buffer > 0){
-            cudaFree(mp->d_send_accel_buffer);
-            cudaFree(mp->d_recv_accel_buffer);
-            cudaFreeHost(mp->h_send_accel_buffer);
-            cudaFreeHost(mp->h_recv_accel_buffer);
+            free(mp->d_send_accel_buffer);
+            free(mp->d_recv_accel_buffer);
+            freeHost(mp->h_send_accel_buffer);
+            freeHost(mp->h_recv_accel_buffer);
             if (mp->simulation_type == 3){
-                cudaFree(mp->d_b_send_accel_buffer);
-                cudaFree(mp->d_b_recv_accel_buffer);
+                free(mp->d_b_send_accel_buffer);
+                free(mp->d_b_recv_accel_buffer);
             }
         }
 
-        cudaFree(mp->d_rmassx);
-        cudaFree(mp->d_rmassz);
+        free(mp->d_rmassx);
+        free(mp->d_rmassz);
 
-        cudaFree(mp->d_phase_ispec_inner_elastic);
-        cudaFree(mp->d_ispec_is_elastic);
-        cudaFree(mp->d_inum_interfaces_elastic);
+        free(mp->d_phase_ispec_inner_elastic);
+        free(mp->d_ispec_is_elastic);
+        free(mp->d_inum_interfaces_elastic);
 
         if (*ABSORBING_CONDITIONS && mp->d_num_abs_boundary_faces > 0){
-            cudaFree(mp->d_rho_vp);
-            cudaFree(mp->d_rho_vs);
-            cudaFree(mp->d_b_absorb_elastic_bottom);
-            cudaFree(mp->d_b_absorb_elastic_left);
-            cudaFree(mp->d_b_absorb_elastic_right);
-            cudaFree(mp->d_b_absorb_elastic_top);
+            free(mp->d_rho_vp);
+            free(mp->d_rho_vs);
+            free(mp->d_b_absorb_elastic_bottom);
+            free(mp->d_b_absorb_elastic_left);
+            free(mp->d_b_absorb_elastic_right);
+            free(mp->d_b_absorb_elastic_top);
         }
-
         if (mp->simulation_type == 3) {
-            cudaFree(mp->d_b_displ);
-            cudaFree(mp->d_b_veloc);
-            cudaFree(mp->d_b_accel);
-            cudaFree(mp->d_rho_kl);
-            cudaFree(mp->d_mu_kl);
-            cudaFree(mp->d_kappa_kl);
-            cudaFree(mp->d_b_dsxx);
-            cudaFree(mp->d_b_dsxz);
-            cudaFree(mp->d_b_dszz);
-            cudaFree(mp->d_dsxx);
-            cudaFree(mp->d_dsxz);
-            cudaFree(mp->d_dszz);
-            if (*APPROXIMATE_HESS_KL ) cudaFree(mp->d_hess_el_kl);
+            free(mp->d_b_displ);
+            free(mp->d_b_veloc);
+            free(mp->d_b_accel);
+            free(mp->d_rho_kl);
+            free(mp->d_mu_kl);
+            free(mp->d_kappa_kl);
+            free(mp->d_b_dsxx);
+            free(mp->d_b_dsxz);
+            free(mp->d_b_dszz);
+            free(mp->d_dsxx);
+            free(mp->d_dsxz);
+            free(mp->d_dszz);
+            if (*APPROXIMATE_HESS_KL ) free(mp->d_hess_el_kl);
         }
-
         if (*ANISOTROPY) {
-            cudaFree(mp->d_c11store);
-            cudaFree(mp->d_c12store);
-            cudaFree(mp->d_c13store);
-            cudaFree(mp->d_c15store);
-            cudaFree(mp->d_c23store);
-            cudaFree(mp->d_c25store);
-            cudaFree(mp->d_c33store);
-            cudaFree(mp->d_c35store);
-            cudaFree(mp->d_c55store);
+            free(mp->d_c11store);
+            free(mp->d_c12store);
+            free(mp->d_c13store);
+            free(mp->d_c15store);
+            free(mp->d_c23store);
+            free(mp->d_c25store);
+            free(mp->d_c33store);
+            free(mp->d_c35store);
+            free(mp->d_c55store);
         }
-
         if (*ATTENUATION_VISCOELASTIC) {
-            cudaFree(mp->d_A_newmark_mu);
-            cudaFree(mp->d_B_newmark_mu);
-            cudaFree(mp->d_A_newmark_kappa);
-            cudaFree(mp->d_B_newmark_kappa);
-            cudaFree(mp->d_e1);
-            cudaFree(mp->d_e11);
-            cudaFree(mp->d_e13);
-            cudaFree(mp->d_dux_dxl_old);
-            cudaFree(mp->d_duz_dzl_old);
-            cudaFree(mp->d_dux_dzl_plus_duz_dxl_old);
+            free(mp->d_A_newmark_mu);
+            free(mp->d_B_newmark_mu);
+            free(mp->d_A_newmark_kappa);
+            free(mp->d_B_newmark_kappa);
+            free(mp->d_e1);
+            free(mp->d_e11);
+            free(mp->d_e13);
+            free(mp->d_dux_dxl_old);
+            free(mp->d_duz_dzl_old);
+            free(mp->d_dux_dzl_plus_duz_dxl_old);
         }
-    } // ELASTIC_SIMULATION
-
+    }
     // purely adjoint & kernel array
     if (mp->simulation_type == 3) {
         if (mp->nadj_rec_local > 0) {
-            cudaFree(mp->d_adj_sourcearrays);
+            free(mp->d_adj_sourcearrays);
         }
     }
 
