@@ -51,6 +51,14 @@ void copy_todevice_realw(void** d_array_addr_ptr,realw* h_array,int size){
   memcpy((realw*) *d_array_addr_ptr,h_array,size*sizeof(realw),memcpyHostToDevice);
 }
 
+void memcpy2D(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height)
+{
+    for(int i=0; i<height; i++) {
+        memcpy(dst+(i*dpitch), src+(i*spitch), width);
+    }
+
+}
+
 extern "C"
 void prepare_constants_device(long* Mesh_pointer,
                               int* h_NGLLX, int* NSPEC_AB, int* NGLOB_AB,
@@ -166,11 +174,11 @@ void prepare_constants_device(long* Mesh_pointer,
     mp->size_mpi_buffer_potential = 0;
 
     // streams
-    cudaStreamCreate(&mp->compute_stream);
+    //cudaStreamCreate(&mp->compute_stream);
     // copy stream (needed to transfer mpi buffers)
-    if (mp->num_interfaces_ext_mesh * mp->max_nibool_interfaces_ext_mesh > 0) {
-        cudaStreamCreate(&mp->copy_stream);
-    }
+    //if (mp->num_interfaces_ext_mesh * mp->max_nibool_interfaces_ext_mesh > 0) {
+    //    cudaStreamCreate(&mp->copy_stream);
+    //}
 
     // inner elements
     copy_todevice_int((void**)&mp->d_ispec_is_inner,h_ispec_is_inner,mp->NSPEC_AB);
@@ -331,10 +339,10 @@ void prepare_fields_acoustic_device(long* Mesh_pointer,
 
     if (*NO_BACKWARD_RECONSTRUCTION){
         malloc((void**)&(mp->d_potential_acoustic_buffer),mp->NGLOB_AB*sizeof(realw));
-        cudaStreamCreateWithFlags(&mp->copy_stream_no_backward,cudaStreamNonBlocking);
-        cudaHostRegister(h_no_backward_acoustic_buffer,3*mp->NGLOB_AB*sizeof(realw),0);
-        cudaEventCreate(&mp->transfer_is_complete1);
-        cudaEventCreate(&mp->transfer_is_complete2);
+        //cudaStreamCreateWithFlags(&mp->copy_stream_no_backward,cudaStreamNonBlocking);
+        //cudaHostRegister(h_no_backward_acoustic_buffer,3*mp->NGLOB_AB*sizeof(realw),0);
+        //cudaEventCreate(&mp->transfer_is_complete1);
+        //cudaEventCreate(&mp->transfer_is_complete2);
     }
 }
 
@@ -673,9 +681,9 @@ void prepare_cleanup_device(long* Mesh_pointer,
 
         if (*NO_BACKWARD_RECONSTRUCTION){
             free(mp->d_potential_acoustic_buffer);
-            cudaHostUnregister(h_no_backward_acoustic_buffer);
-            cudaEventDestroy(mp->transfer_is_complete1);
-            cudaEventDestroy(mp->transfer_is_complete2);
+            //cudaHostUnregister(h_no_backward_acoustic_buffer);
+            //cudaEventDestroy(mp->transfer_is_complete1);
+            //cudaEventDestroy(mp->transfer_is_complete2);
 
         }
         if (mp->simulation_type == 3) {
