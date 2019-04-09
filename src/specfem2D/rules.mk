@@ -136,6 +136,7 @@ specfem2D_OBJECTS = \
 	$O/prepare_assemble_MPI.spec.o \
 	$O/prepare_color_image.spec.o \
 	$O/prepare_gpu.spec.o \
+	$O/prepare_omp.spec.o \
 	$O/prepare_initial_field.spec.o \
 	$O/prepare_pml.spec.o \
 	$O/prepare_source_time_function.spec.o \
@@ -258,7 +259,11 @@ omp_specfem2D_OBJECTS = \
 	$O/compute_coupling_omp.cpp.o \
 	$O/compute_stacey_acoustic_omp.cpp.o \
 	$O/update_displacement_omp.cpp.o \
+	$O/compute_forces_acoustic_omp.cpp.o \
+	$O/prepare_mesh_constants_omp.cpp.o \
+	$O/write_seismograms_omp.cpp.o \
 	$(EMPTY_MACRO)
+#	$O/compute_kernels_omp.cpp.o \
 
 ###
 ### CUDA

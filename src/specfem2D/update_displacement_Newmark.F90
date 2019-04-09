@@ -132,18 +132,7 @@
   ! checks if anything to do in this slice
   if (.not. any_acoustic) return
 
-  if (.not. GPU_MODE) then
-
-    if (time_stepping_scheme == 1) then
-      call update_displacement_newmark_acoustic(deltat,deltatover2,deltatsquareover2, &
-                                                potential_dot_dot_acoustic,potential_dot_acoustic, &
-                                                potential_acoustic, &
-                                                PML_BOUNDARY_CONDITIONS,potential_acoustic_old)
-    else
-      potential_dot_dot_acoustic(:) = 0._CUSTOM_REAL
-    endif
-
-  else
+  if (GPU_MODE .OR. OMP_MODE) then
     ! for the UNDO_ATTENUATION_AND_OR_PML case, this routine is not used
     if (NO_BACKWARD_RECONSTRUCTION) then
       compute_b_wavefield = .false.
@@ -153,6 +142,17 @@
     ! on GPU
     ! handles both forward and backward
     call update_displacement_newmark_GPU_acoustic(compute_b_wavefield)
+
+  else
+    if (time_stepping_scheme == 1) then
+      call update_displacement_newmark_acoustic(deltat,deltatover2,deltatsquareover2, &
+                                                potential_dot_dot_acoustic,potential_dot_acoustic, &
+                                                potential_acoustic, &
+                                                PML_BOUNDARY_CONDITIONS,potential_acoustic_old)
+    else
+      potential_dot_dot_acoustic(:) = 0._CUSTOM_REAL
+    endif
+
   endif
 
   end subroutine update_displ_acoustic_forward
@@ -175,7 +175,7 @@
   ! checks if anything to do in this slice
   if (.not. any_acoustic) return
 
-  if (.not. GPU_MODE) then
+  if ((.not. GPU_MODE) .OR. (.not. OMP_MODE)) then
     !Since we do not do anything in PML region in case of backward simulation, thus we set
     !PML_BOUNDARY_CONDITIONS = .false.
     if (time_stepping_scheme == 1) then
@@ -209,7 +209,7 @@
   ! checks if anything to do in this slice
   if (.not. any_elastic) return
 
-  if (.not. GPU_MODE) then
+  if ((.not. GPU_MODE) .OR. (.not. OMP_MODE)) then
 
     ! for coupling with adjoint wavefield, stores old (at time t_n) wavefield
     if (SIMULATION_TYPE == 3) then
@@ -257,7 +257,7 @@
   ! checks if anything to do in this slice
   if (.not. any_elastic) return
 
-  if (.not. GPU_MODE) then
+  if ((.not. GPU_MODE) .OR. (.not. OMP_MODE)) then
     !Since we do not do anything in PML region in case of backward simulation, thus we set
     !PML_BOUNDARY_CONDITIONS = .false.
     if (time_stepping_scheme == 1) then
@@ -291,7 +291,7 @@
   ! checks if anything to do in this slice
   if (.not. any_poroelastic) return
 
-  if (.not. GPU_MODE) then
+  if ((.not. GPU_MODE) .OR. (.not. OMP_MODE)) then
 
     ! for coupling with adjoint wavefield, stores old (at time t_n) wavefield
     if (SIMULATION_TYPE == 3) then
@@ -340,7 +340,7 @@
   ! checks if anything to do in this slice
   if (.not. any_poroelastic) return
 
-  if (.not. GPU_MODE) then
+  if ((.not. GPU_MODE) .OR. (.not. OMP_MODE)) then
 
     if (time_stepping_scheme == 1) then
       !PML not implemented for poroelastic simulation

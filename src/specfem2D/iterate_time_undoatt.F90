@@ -102,8 +102,8 @@
 ! *********************************************************
 
   ! safety checks
-  if (GPU_MODE .and. ATTENUATION_VISCOELASTIC) call exit_MPI(myrank,'for undo_attenuation, &
-                                              & GPU_MODE does not support ATTENUATION_VISCOELASTIC')
+  if ((GPU_MODE .OR. OMP_MODE).and. ATTENUATION_VISCOELASTIC) call exit_MPI(myrank,'for undo_attenuation, &
+                                              & GPU_MODE and OMP_MODE does not support ATTENUATION_VISCOELASTIC')
   if (time_stepping_scheme /= 1) call exit_MPI(myrank,'for undo_attenuation, only Newmark scheme has implemented ')
   if (any_poroelastic) call exit_MPI(myrank,'undo_attenuation has not implemented for poroelastic simulation yet')
   if (NOISE_TOMOGRAPHY /= 0) call exit_MPI(myrank,'for undo_attenuation, NOISE_TOMOGRAPHY is not supported')
@@ -244,7 +244,7 @@
 
         do i_stage = 1, stage_time_scheme ! is equal to 1 if Newmark because only one stage then
           ! update_displacement_newmark
-          if (GPU_MODE) then
+          if (GPU_MODE .OR. OMP_MODE) then
             if (any_acoustic) call update_displacement_newmark_GPU_acoustic(compute_b_wavefield)
           else
             call update_displ_acoustic_forward()
@@ -253,7 +253,7 @@
 
           ! acoustic domains
           if (any_acoustic) then
-            if (.not. GPU_MODE) then
+            if (.not. GPU_MODE .OR. OMP_MODE) then
               call compute_forces_viscoacoustic_main()
             else ! on GPU
               call compute_forces_viscoacoustic_GPU(compute_b_wavefield)
@@ -309,7 +309,7 @@
         do i_stage = 1, stage_time_scheme
           ! backward_inner_loop
           ! update_displacement_newmark
-          if (GPU_MODE) then
+          if (GPU_MODE .OR. OMP_MODE) then
             if (any_acoustic) call update_displacement_newmark_GPU_acoustic(compute_b_wavefield)
           else
             call update_displ_Newmark_backward()
@@ -317,7 +317,7 @@
 
           ! acoustic domains
           if (any_acoustic) then
-            if (.not. GPU_MODE) then
+            if (.not. GPU_MODE .OR. OMP_MODE) then
               call compute_forces_viscoacoustic_main_backward()
             else ! on GPU
               call compute_forces_viscoacoustic_GPU(compute_b_wavefield)
@@ -335,7 +335,7 @@
           iframe_kernel = iframe_kernel + 1
 
           if (any_acoustic) then
-            if (GPU_MODE) then
+            if (GPU_MODE .OR. OMP_MODE) then
               call transfer_b_potential_ac_from_device(nglob,b_potential_acoustic_buffer(:,iframe_kernel),Mesh_pointer)
             else
               b_potential_acoustic_buffer(:,iframe_kernel) = b_potential_acoustic(:)
@@ -369,7 +369,7 @@
           ! reads backward/reconstructed wavefield from buffers
           ! note: uses wavefield at corresponding time (NSTEP - it + 1 ), i.e. we have now time-reversed wavefields
           if (any_acoustic) then
-            if (GPU_MODE) then
+            if (GPU_MODE .OR. OMP_MODE) then
               call transfer_b_potential_ac_to_device(nglob, &
                                         b_potential_acoustic_buffer(:,nframes_kernel-iframe_kernel+1),Mesh_pointer)
             else
@@ -391,7 +391,7 @@
         timeval = (it-1) * deltat
 
         ! display time step and max of norm of displacement
-        if ((.not. GPU_MODE) .and. mod(it,NSTEP_BETWEEN_OUTPUT_INFO) == 0 .or. it == 5 .or. it == NSTEP) then
+        if ((.not. GPU_MODE .OR. OMP_MODE) .and. mod(it,NSTEP_BETWEEN_OUTPUT_INFO) == 0 .or. it == 5 .or. it == NSTEP) then
           call check_stability()
         endif
 
@@ -400,7 +400,7 @@
         do i_stage = 1, stage_time_scheme
           ! adjoint
           ! update_displacement_newmark
-          if (GPU_MODE) then
+          if (GPU_MODE .OR. OMP_MODE) then
             if (any_acoustic) call update_displacement_newmark_GPU_acoustic(compute_b_wavefield)
           else
             call update_displ_acoustic_forward()
@@ -431,7 +431,7 @@
 
           ! acoustic domains
           if (any_acoustic) then
-            if (.not. GPU_MODE) then
+            if (.not. GPU_MODE .OR. OMP_MODE) then
               call compute_forces_viscoacoustic_main()
             else ! on GPU
               call compute_forces_viscoacoustic_GPU(compute_b_wavefield)
@@ -478,7 +478,7 @@
   endif
 
   ! Transfer fields from GPU card to host for further analysis
-  if (GPU_MODE) call it_transfer_from_GPU()
+  if (GPU_MODE .OR. OMP_MODE) call it_transfer_from_GPU()
 
 
   ! frees undo_attenuation buffers

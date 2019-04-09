@@ -66,7 +66,36 @@
     if (nrecloc > 0) then
 
       ! computes seismogram entry for all local receivers
-      if (.not. GPU_MODE) then
+      if ( GPU_MODE) then
+        ! on GPU
+        if (SIMULATION_TYPE == 1) then
+          ! Simulating seismograms
+          if (USE_TRICK_FOR_BETTER_PRESSURE) then
+            call compute_seismograms_cuda(Mesh_pointer,seismotype,sisux,sisuz,seismo_current, &
+                                                       NSTEP_BETWEEN_OUTPUT_SEISMOS/subsamp_seismos, &
+                                                       ELASTIC_SIMULATION,ACOUSTIC_SIMULATION,1)
+          else
+            call compute_seismograms_cuda(Mesh_pointer,seismotype,sisux,sisuz,seismo_current, &
+                                                       NSTEP_BETWEEN_OUTPUT_SEISMOS/subsamp_seismos, &
+                                                       ELASTIC_SIMULATION,ACOUSTIC_SIMULATION,0)
+          endif
+          ! note: curl not implemented yet
+        endif
+    else if ( OMP_MODE) then
+        if (SIMULATION_TYPE == 1) then
+          ! Simulating seismograms
+          if (USE_TRICK_FOR_BETTER_PRESSURE) then
+            call compute_seismograms_cuda(Mesh_pointer,seismotype,sisux,sisuz,seismo_current, &
+                                                       NSTEP_BETWEEN_OUTPUT_SEISMOS/subsamp_seismos, &
+                                                       ELASTIC_SIMULATION,ACOUSTIC_SIMULATION,1)
+          else
+            call compute_seismograms_cuda(Mesh_pointer,seismotype,sisux,sisuz,seismo_current, &
+                                                       NSTEP_BETWEEN_OUTPUT_SEISMOS/subsamp_seismos, &
+                                                       ELASTIC_SIMULATION,ACOUSTIC_SIMULATION,0)
+          endif
+          ! note: curl not implemented yet
+        endif
+    else
         ! on CPU
         do irecloc = 1,nrecloc
 
@@ -136,23 +165,7 @@
             if (seismotype == 5) siscurl(seismo_current,irecloc) = valcurl
           endif
         enddo ! irecloc
-
-      else
-        ! on GPU
-        if (SIMULATION_TYPE == 1) then
-          ! Simulating seismograms
-          if (USE_TRICK_FOR_BETTER_PRESSURE) then
-            call compute_seismograms_cuda(Mesh_pointer,seismotype,sisux,sisuz,seismo_current, &
-                                                       NSTEP_BETWEEN_OUTPUT_SEISMOS/subsamp_seismos, &
-                                                       ELASTIC_SIMULATION,ACOUSTIC_SIMULATION,1)
-          else
-            call compute_seismograms_cuda(Mesh_pointer,seismotype,sisux,sisuz,seismo_current, &
-                                                       NSTEP_BETWEEN_OUTPUT_SEISMOS/subsamp_seismos, &
-                                                       ELASTIC_SIMULATION,ACOUSTIC_SIMULATION,0)
-          endif
-          ! note: curl not implemented yet
-        endif
-      endif ! GPU_MODE
+      endif ! GPU_MODE & ! OMP_MODE
 
     endif ! nrecloc
 

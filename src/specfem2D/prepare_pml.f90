@@ -43,7 +43,7 @@
   character(len=MAX_STRING_LEN) :: outputname
 
   ! safety check
-  if (GPU_MODE .and. PML_BOUNDARY_CONDITIONS ) call stop_the_code( &
+  if ((GPU_MODE .OR. OMP_MODE) .and. PML_BOUNDARY_CONDITIONS ) call stop_the_code( &
 'Error : PML not implemented on GPU mode. Please use Stacey instead')
 
   ! PML absorbing conditions

@@ -108,6 +108,7 @@
 
   ! prepares GPU arrays
   if (GPU_MODE) call prepare_GPU()
+  if (OMP_MODE) call prepare_OMP()
 
   !-------------------------------------------------------------
 

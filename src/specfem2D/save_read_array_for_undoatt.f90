@@ -40,7 +40,7 @@
     potential_acoustic,potential_dot_acoustic,potential_dot_dot_acoustic, &
     displ_elastic,veloc_elastic,accel_elastic, &
     e1,e11,e13,dux_dxl_old,duz_dzl_old,dux_dzl_plus_duz_dxl_old, &
-    e1_acous_sf,sum_forces_old,GPU_MODE,nspec_ATT_ac,nglob
+    e1_acous_sf,sum_forces_old,GPU_MODE,OMP_MODE,nspec_ATT_ac,nglob
 
   use specfem_par_gpu, only: Mesh_pointer
 
@@ -62,14 +62,14 @@
   if (ier /= 0 ) call exit_MPI(myrank,'Error opening file proc***_save_frame_at** for writing')
 
   if (any_acoustic) then
-    if (GPU_MODE) call transfer_fields_ac_from_device(nglob,potential_acoustic,potential_dot_acoustic, &
+    if (GPU_MODE .OR. OMP_MODE) call transfer_fields_ac_from_device(nglob,potential_acoustic,potential_dot_acoustic, &
                                                       potential_dot_dot_acoustic,Mesh_pointer)
     write(IOUT_UNDO_ATT) potential_dot_dot_acoustic
     write(IOUT_UNDO_ATT) potential_dot_acoustic
     write(IOUT_UNDO_ATT) potential_acoustic
 
     if (ATTENUATION_VISCOACOUSTIC) then
-      if (GPU_MODE) call transfer_viscoacoustic_var_from_device(NGLLX*NGLLZ*nspec_ATT_ac, &
+      if (GPU_MODE .OR. OMP_MODE) call transfer_viscoacoustic_var_from_device(NGLLX*NGLLZ*nspec_ATT_ac, &
                                                                 e1_acous_sf,sum_forces_old,Mesh_pointer)
       write(IOUT_UNDO_ATT) e1_acous_sf
       write(IOUT_UNDO_ATT) sum_forces_old
@@ -104,7 +104,7 @@
   use constants, only: IOUT_UNDO_ATT,MAX_STRING_LEN,OUTPUT_FILES,APPROXIMATE_HESS_KL,NDIM
 
   use specfem_par, only: myrank,it,NSTEP, &
-    any_acoustic,any_elastic,potential_acoustic,displ_elastic,accel_elastic,GPU_MODE, &
+    any_acoustic,any_elastic,potential_acoustic,displ_elastic,accel_elastic,GPU_MODE,OMP_MODE, &
     no_backward_acoustic_buffer,no_backward_displ_buffer,no_backward_accel_buffer, &
     no_backward_iframe,no_backward_Nframes,nglob
 
@@ -128,7 +128,7 @@
   character(len=MAX_STRING_LEN) :: outputname
 
   ! safety check
-  if (GPU_MODE .and. any_elastic) call stop_the_code('No backward simulation is not available for elastic on GPU')
+  if ((GPU_MODE .OR. OMP_MODE) .and. any_elastic) call stop_the_code('No backward simulation is not available for elastic on GPU')
 
   ! increments counter of wavefield frames transfered
   no_backward_iframe = no_backward_iframe + 1
@@ -150,7 +150,7 @@
   ! for the two first times, we only launch GPU = => RAM transfers
   if (no_backward_iframe < 3) then
 
-    if (GPU_MODE) then
+    if (GPU_MODE .OR. OMP_MODE) then
       call transfer_async_pot_ac_from_device(no_backward_acoustic_buffer(nglob*buffer_num_GPU_transfer+1),Mesh_pointer)
     else
       no_backward_acoustic_buffer(nglob*buffer_num_GPU_transfer+1:nglob*(buffer_num_GPU_transfer+1)) = potential_acoustic
@@ -166,7 +166,7 @@
       write(IOUT_UNDO_ATT,asynchronous='yes',pos=offset) &
                           no_backward_acoustic_buffer(nglob*buffer_num_async_IO+1:nglob*(buffer_num_async_IO+1))
 
-      if (GPU_MODE) then
+      if (GPU_MODE .OR. OMP_MODE) then
         call transfer_async_pot_ac_from_device(no_backward_acoustic_buffer(nglob*buffer_num_GPU_transfer+1),Mesh_pointer)
       else
         no_backward_acoustic_buffer(nglob*mod(no_backward_iframe+1,3)+1:nglob*(mod(no_backward_iframe+1,3)+1)) = potential_acoustic
@@ -178,7 +178,7 @@
         wait(IOUT_UNDO_ATT)
 
         ! call to finalize GPU transfer, which also initiate a (dummy) transfer
-        if (GPU_MODE) &
+        if (GPU_MODE .OR. OMP_MODE) &
           call transfer_async_pot_ac_from_device(no_backward_acoustic_buffer(nglob*buffer_num_async_IO+1),Mesh_pointer)
 
         write(IOUT_UNDO_ATT,pos=offset+4*nglob) &

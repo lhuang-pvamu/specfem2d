@@ -55,7 +55,7 @@
   write(2040) coord,jacobian,xix,xiz,gammax,gammaz, &
               this_ibool_is_a_periodic_edge,ibool,ispec_is_inner
 
-  if (GPU_MODE) then
+  if (GPU_MODE .OR. OMP_MODE) then
     write (2040) abs_boundary_ij,abs_boundary_normal,abs_boundary_jacobian1Dw, &
                  free_ac_ispec,cote_abs,free_surface_ij,ANY_ANISOTROPY
   endif
@@ -74,7 +74,7 @@
   if (coupled_acoustic_elastic) then
     write(2040) fluid_solid_acoustic_ispec,fluid_solid_acoustic_iedge,fluid_solid_elastic_ispec,fluid_solid_elastic_iedge, &
                 ivalue_inverse,jvalue_inverse,ivalue,jvalue
-    if (GPU_MODE) write(2040) coupling_ac_el_ispec,coupling_ac_el_ij,coupling_ac_el_normal,coupling_ac_el_jacobian1Dw
+    if (GPU_MODE .OR. OMP_MODE) write(2040) coupling_ac_el_ispec,coupling_ac_el_ij,coupling_ac_el_normal,coupling_ac_el_jacobian1Dw
   endif
 
   if (NPROC > 1) then
@@ -140,7 +140,7 @@
       call exit_MPI(myrank,'currently cannot have database mode with AXISYM')
   if (output_postscript_snapshot) &
       call exit_MPI(myrank,'currently cannot have database mode with postscript')
-  if (GPU_MODE) &
+  if (GPU_MODE .OR. OMP_MODE) &
       call exit_MPI(myrank,'currently cannot have database mode with GPU_MODE')
 
   end subroutine read_binary_database_part1
@@ -166,7 +166,7 @@
   read(2040) coord,jacobian,xix,xiz,gammax,gammaz, &
              this_ibool_is_a_periodic_edge,ibool,ispec_is_inner
 
-  if (GPU_MODE) then
+  if (GPU_MODE .OR. OMP_MODE) then
     read (2040) abs_boundary_ij,abs_boundary_normal,abs_boundary_jacobian1Dw, &
                 free_ac_ispec,cote_abs,free_surface_ij,ANY_ANISOTROPY
   endif
@@ -202,7 +202,7 @@
   if (coupled_acoustic_elastic) then
     read(2040) fluid_solid_acoustic_ispec,fluid_solid_acoustic_iedge,fluid_solid_elastic_ispec,fluid_solid_elastic_iedge, &
                ivalue_inverse,jvalue_inverse,ivalue,jvalue
-    if (GPU_MODE) read(2040) coupling_ac_el_ispec,coupling_ac_el_ij,coupling_ac_el_normal,coupling_ac_el_jacobian1Dw
+    if (GPU_MODE .OR. OMP_MODE) read(2040) coupling_ac_el_ispec,coupling_ac_el_ij,coupling_ac_el_normal,coupling_ac_el_jacobian1Dw
   endif
 
   if (NPROC > 1) then

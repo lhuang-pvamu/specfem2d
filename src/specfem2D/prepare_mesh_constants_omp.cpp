@@ -34,7 +34,13 @@
 */
 
 #include "mesh_constants_omp.h"
-#include "prepare_constants_omp.h"
+#include <cstdlib>
+
+
+using std::free;
+using std::malloc;
+
+//#include "prepare_constants_omp.h"
 
 
 // copies integer array from CPU host to GPU device
@@ -60,7 +66,7 @@ void memcpy2D(void* dst, size_t dpitch, const void* src, size_t spitch, size_t w
 }
 
 extern "C"
-void prepare_constants_device(long* Mesh_pointer,
+void prepare_constants_deviceomp_(long* Mesh_pointer,
                               int* h_NGLLX, int* NSPEC_AB, int* NGLOB_AB,
                               realw* h_xix, realw* h_xiz,
                               realw* h_gammax, realw* h_gammaz,
@@ -664,7 +670,8 @@ void prepare_cleanup_device(long* Mesh_pointer,
         free(mp->d_gammar_store_loc);
         free(mp->d_xir_store_loc);
         free(mp->d_ispec_selected_rec_loc);
-        freeHost(mp->h_seismograms);
+        //freeHost
+        free(mp->h_seismograms);
     }
     // ACOUSTIC arrays
     if (*ACOUSTIC_SIMULATION) {
@@ -726,8 +733,10 @@ void prepare_cleanup_device(long* Mesh_pointer,
         if (mp->size_mpi_buffer > 0){
             free(mp->d_send_accel_buffer);
             free(mp->d_recv_accel_buffer);
-            freeHost(mp->h_send_accel_buffer);
-            freeHost(mp->h_recv_accel_buffer);
+            //freeHost
+            free(mp->h_send_accel_buffer);
+            //freeHost
+            free(mp->h_recv_accel_buffer);
             if (mp->simulation_type == 3){
                 free(mp->d_b_send_accel_buffer);
                 free(mp->d_b_recv_accel_buffer);
