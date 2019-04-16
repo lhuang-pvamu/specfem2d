@@ -41,7 +41,7 @@
 
   use constants, only: IMAIN,STABILITY_THRESHOLD,CUSTOM_REAL
 
-  use specfem_par, only: myrank,timeval,it,NSTEP,GPU_MODE, &
+  use specfem_par, only: myrank,timeval,it,NSTEP,GPU_MODE,OMP_MODE, &
                          ELASTIC_SIMULATION,any_elastic,displ_elastic, &
                          POROELASTIC_SIMULATION,any_poroelastic, &
                          displs_poroelastic,displw_poroelastic, &
@@ -74,7 +74,7 @@
   integer, external :: idaywk
 
   ! checks if anything to do
-  if (GPU_MODE) then
+  if (GPU_MODE .OR. OMP_MODE) then
     ! todo: wavefields are on GPU and not transferred onto CPU yet for the following norm checks
     return
   endif

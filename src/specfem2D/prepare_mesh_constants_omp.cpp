@@ -35,38 +35,42 @@
 
 #include "mesh_constants_omp.h"
 #include <cstdlib>
+#include <cstring>
 
 
 using std::free;
-using std::malloc;
+//using std::malloc;
 
 //#include "prepare_constants_omp.h"
 
-
-// copies integer array from CPU host to GPU device
-void copy_todevice_int(void** d_array_addr_ptr,int* h_array,int size)
-{
-    malloc((void**)d_array_addr_ptr,size*sizeof(int));
-    memcpy((int*) *d_array_addr_ptr,h_array,size*sizeof(int),memcpyHostToDevice);
+void malloc(void** result, int size) {
+    *result = std::malloc(size);
 }
 
 // copies integer array from CPU host to GPU device
-void copy_todevice_realw(void** d_array_addr_ptr,realw* h_array,int size){
+void copy_to_omp_device_int(void** d_array_addr_ptr,int* h_array,int size)
+{
+    malloc((void**)d_array_addr_ptr,size*sizeof(int));
+    std::memcpy((int*) *d_array_addr_ptr,h_array,size*sizeof(int));
+}
 
-  malloc((void**)d_array_addr_ptr,size*sizeof(realw));
-  memcpy((realw*) *d_array_addr_ptr,h_array,size*sizeof(realw),memcpyHostToDevice);
+// copies integer array from CPU host to GPU device
+void copy_to_omp_device_realw(void** d_array_addr_ptr,realw* h_array,int size){
+
+    malloc((void**)d_array_addr_ptr,size*sizeof(realw));
+    std::memcpy((realw*) *d_array_addr_ptr,h_array,size*sizeof(realw));
 }
 
 void memcpy2D(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height)
 {
     for(int i=0; i<height; i++) {
-        memcpy(dst+(i*dpitch), src+(i*spitch), width);
+        std::memcpy(dst+(i*dpitch), src+(i*spitch), width);
     }
 
 }
 
 extern "C"
-void prepare_constants_deviceomp_(long* Mesh_pointer,
+void prepare_constants_device_omp_(long* Mesh_pointer,
                               int* h_NGLLX, int* NSPEC_AB, int* NGLOB_AB,
                               realw* h_xix, realw* h_xiz,
                               realw* h_gammax, realw* h_gammaz,
@@ -105,12 +109,12 @@ void prepare_constants_deviceomp_(long* Mesh_pointer,
                               realw* h_xir_store, realw* h_gammar_store)
 {
     Mesh* mp = (Mesh*) malloc( sizeof(Mesh) );
-    if (mp == NULL) exit_on_error("error allocating mesh pointer");
+    //if (mp == NULL) exit_on_error("error allocating mesh pointer");
     *Mesh_pointer = (long)mp;
 
-    if (*h_NGLLX != NGLLX) {
-        exit_on_error("NGLLX defined in constants.h must match the NGLLX defined in src/cuda/mesh_constants_cuda.h");
-    }
+    //if (*h_NGLLX != NGLLX) {
+        //exit_on_error("NGLLX defined in constants.h must match the NGLLX defined in src/cuda/mesh_constants_cuda.h");
+    //}
 
     mp->myrank = *h_myrank;
 
@@ -124,11 +128,11 @@ void prepare_constants_deviceomp_(long* Mesh_pointer,
     mp->save_forward = *SAVE_FORWARD;
 
     // sets constant arrays
-    setConst_hprime_xx(h_hprime_xx,mp);
+    //setConst_hprime_xx(h_hprime_xx,mp);
 
-    setConst_hprimewgll_xx(h_hprimewgll_xx,mp);
+    //setConst_hprimewgll_xx(h_hprimewgll_xx,mp);
 
-    setConst_wxgll(h_wxgll,mp);
+    //setConst_wxgll(h_wxgll,mp);
 
     // Assuming NGLLX=5. Padded is then 32 (5^2+3)
     int size_padded = NGLL2_PADDED * (mp->NSPEC_AB);
@@ -142,36 +146,36 @@ void prepare_constants_deviceomp_(long* Mesh_pointer,
 
     memcpy2D(mp->d_xix, NGLL2_PADDED*sizeof(realw),
                 h_xix, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                mp->NSPEC_AB, memcpyHostToDevice);
+                mp->NSPEC_AB);
     memcpy2D(mp->d_xiz, NGLL2_PADDED*sizeof(realw),
                 h_xiz, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                mp->NSPEC_AB, memcpyHostToDevice);
+                mp->NSPEC_AB);
     memcpy2D(mp->d_gammax, NGLL2_PADDED*sizeof(realw),
                 h_gammax, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                mp->NSPEC_AB, memcpyHostToDevice);
+                mp->NSPEC_AB);
     memcpy2D(mp->d_gammaz, NGLL2_PADDED*sizeof(realw),
                 h_gammaz, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                mp->NSPEC_AB, memcpyHostToDevice);
+                mp->NSPEC_AB);
     memcpy2D(mp->d_kappav, NGLL2_PADDED*sizeof(realw),
                 h_kappav, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                mp->NSPEC_AB, memcpyHostToDevice);
+                mp->NSPEC_AB);
     memcpy2D(mp->d_muv, NGLL2_PADDED*sizeof(realw),
                 h_muv, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                mp->NSPEC_AB, memcpyHostToDevice);
+                mp->NSPEC_AB);
 
     // global indexing (padded)
     malloc((void**) &mp->d_ibool, size_padded*sizeof(int));
     memcpy2D(mp->d_ibool, NGLL2_PADDED*sizeof(int),
                 h_ibool, NGLL2*sizeof(int), NGLL2*sizeof(int),
-                mp->NSPEC_AB, memcpyHostToDevice);
+                mp->NSPEC_AB);
 
     // prepare interprocess-edge exchange information
     mp->num_interfaces_ext_mesh = *num_interfaces_ext_mesh;
     mp->max_nibool_interfaces_ext_mesh = *max_nibool_interfaces_ext_mesh;
     if (mp->num_interfaces_ext_mesh > 0) {
-        copy_todevice_int((void**)&mp->d_nibool_interfaces_ext_mesh,h_nibool_interfaces_ext_mesh,
+        copy_to_omp_device_int((void**)&mp->d_nibool_interfaces_ext_mesh,h_nibool_interfaces_ext_mesh,
                 mp->num_interfaces_ext_mesh);
-        copy_todevice_int((void**)&mp->d_ibool_interfaces_ext_mesh,h_ibool_interfaces_ext_mesh,
+        copy_to_omp_device_int((void**)&mp->d_ibool_interfaces_ext_mesh,h_ibool_interfaces_ext_mesh,
                 (mp->num_interfaces_ext_mesh)*(mp->max_nibool_interfaces_ext_mesh));
         //int blocksize = BLOCKSIZE_TRANSFER;
         //int size_padded = ((int)ceil(((double)(mp->max_nibool_interfaces_ext_mesh))/((double)blocksize)))*blocksize;
@@ -187,23 +191,23 @@ void prepare_constants_deviceomp_(long* Mesh_pointer,
     //}
 
     // inner elements
-    copy_todevice_int((void**)&mp->d_ispec_is_inner,h_ispec_is_inner,mp->NSPEC_AB);
+    copy_to_omp_device_int((void**)&mp->d_ispec_is_inner,h_ispec_is_inner,mp->NSPEC_AB);
 
     // absorbing boundaries
     mp->d_num_abs_boundary_faces = *h_num_abs_boundary_faces;
     if (mp->absorbing_conditions && mp->d_num_abs_boundary_faces > 0) {
-        copy_todevice_int((void**)&mp->d_abs_boundary_ispec,h_abs_boundary_ispec,mp->d_num_abs_boundary_faces);
-        copy_todevice_int((void**)&mp->d_abs_boundary_ijk,h_abs_boundary_ij,
+        copy_to_omp_device_int((void**)&mp->d_abs_boundary_ispec,h_abs_boundary_ispec,mp->d_num_abs_boundary_faces);
+        copy_to_omp_device_int((void**)&mp->d_abs_boundary_ijk,h_abs_boundary_ij,
                 2*NGLLX*(mp->d_num_abs_boundary_faces));
-        copy_todevice_realw((void**)&mp->d_abs_boundary_normal,h_abs_boundary_normal,
+        copy_to_omp_device_realw((void**)&mp->d_abs_boundary_normal,h_abs_boundary_normal,
                 NDIM*NGLLX*(mp->d_num_abs_boundary_faces));
-        copy_todevice_realw((void**)&mp->d_abs_boundary_jacobian2Dw,h_abs_boundary_jacobian1Dw,
+        copy_to_omp_device_realw((void**)&mp->d_abs_boundary_jacobian2Dw,h_abs_boundary_jacobian1Dw,
                 NGLLX*(mp->d_num_abs_boundary_faces));
-        copy_todevice_int((void**)&mp->d_cote_abs,h_cote_abs,(mp->d_num_abs_boundary_faces));
-        copy_todevice_int((void**)&mp->d_ib_left,h_ib_left,(mp->d_num_abs_boundary_faces));
-        copy_todevice_int((void**)&mp->d_ib_right,h_ib_right,(mp->d_num_abs_boundary_faces));
-        copy_todevice_int((void**)&mp->d_ib_top,h_ib_top,(mp->d_num_abs_boundary_faces));
-        copy_todevice_int((void**)&mp->d_ib_bottom,h_ib_bottom,(mp->d_num_abs_boundary_faces));
+        copy_to_omp_device_int((void**)&mp->d_cote_abs,h_cote_abs,(mp->d_num_abs_boundary_faces));
+        copy_to_omp_device_int((void**)&mp->d_ib_left,h_ib_left,(mp->d_num_abs_boundary_faces));
+        copy_to_omp_device_int((void**)&mp->d_ib_right,h_ib_right,(mp->d_num_abs_boundary_faces));
+        copy_to_omp_device_int((void**)&mp->d_ib_top,h_ib_top,(mp->d_num_abs_boundary_faces));
+        copy_to_omp_device_int((void**)&mp->d_ib_bottom,h_ib_bottom,(mp->d_num_abs_boundary_faces));
 
         mp->d_nspec_bottom = *h_nspec_bottom;
         mp->d_nspec_left = *h_nspec_left;
@@ -215,9 +219,9 @@ void prepare_constants_deviceomp_(long* Mesh_pointer,
     mp->nsources_local = *nsources_local_f;
 
     if (mp->nsources_local > 0){
-        copy_todevice_realw((void**)&mp->d_source_time_function,h_source_time_function,(*NSTEP)*(mp->nsources_local));
-        copy_todevice_realw((void**)&mp->d_sourcearrays,h_sourcearrays,mp->nsources_local*NDIM*NGLL2);
-        copy_todevice_int((void**)&mp->d_ispec_selected_source,h_ispec_selected_source,mp->nsources_local);
+        copy_to_omp_device_realw((void**)&mp->d_source_time_function,h_source_time_function,(*NSTEP)*(mp->nsources_local));
+        copy_to_omp_device_realw((void**)&mp->d_sourcearrays,h_sourcearrays,mp->nsources_local*NDIM*NGLL2);
+        copy_to_omp_device_int((void**)&mp->d_ispec_selected_source,h_ispec_selected_source,mp->nsources_local);
     }
 
     // receiver stations
@@ -232,13 +236,13 @@ void prepare_constants_deviceomp_(long* Mesh_pointer,
         //mp->h_seismograms = (float*)malloc((mp->nrec_local)*2*sizeof(float));
         //if (mp->h_seismograms == NULL) exit_on_error("h_seismograms not allocated \n");
 
-        copy_todevice_realw((void**)&mp->d_cosrot,h_cosrot,mp->nrec_local);
-        copy_todevice_realw((void**)&mp->d_sinrot,h_sinrot,mp->nrec_local);
+        copy_to_omp_device_realw((void**)&mp->d_cosrot,h_cosrot,mp->nrec_local);
+        copy_to_omp_device_realw((void**)&mp->d_sinrot,h_sinrot,mp->nrec_local);
 
-        copy_todevice_realw((void**)&mp->d_xir_store_loc,h_xir_store,(mp->nrec_local)*NGLLX);
-        copy_todevice_realw((void**)&mp->d_gammar_store_loc,h_gammar_store,(mp->nrec_local)*NGLLX);
+        copy_to_omp_device_realw((void**)&mp->d_xir_store_loc,h_xir_store,(mp->nrec_local)*NGLLX);
+        copy_to_omp_device_realw((void**)&mp->d_gammar_store_loc,h_gammar_store,(mp->nrec_local)*NGLLX);
 
-        copy_todevice_int((void**)&mp->d_ispec_selected_rec_loc,h_ispec_selected_rec_loc,mp->nrec_local);
+        copy_to_omp_device_int((void**)&mp->d_ispec_selected_rec_loc,h_ispec_selected_rec_loc,mp->nrec_local);
     }
     // number of elements per domain
     mp->nspec_acoustic = *nspec_acoustic;
@@ -247,21 +251,21 @@ void prepare_constants_deviceomp_(long* Mesh_pointer,
 
 // for ACOUSTIC simulations
 extern "C"
-void prepare_fields_acoustic_device(long* Mesh_pointer,
-                                    realw* rmass_acoustic, realw* rhostore, realw* kappastore,
-                                    int* num_phase_ispec_acoustic, int* phase_ispec_inner_acoustic,
-                                    int* ispec_is_acoustic,
-                                    int* num_free_surface_faces,
-                                    int* free_surface_ispec,
-                                    int* free_surface_ijk,
-                                    int* ELASTIC_SIMULATION,
-                                    int* num_coupling_ac_el_faces,
-                                    int* coupling_ac_el_ispec,
-                                    int* coupling_ac_el_ijk,
-                                    realw* coupling_ac_el_normal,
-                                    realw* coupling_ac_el_jacobian2Dw,
-                                    int * h_ninterface_acoustic,int * h_inum_interfaces_acoustic,int* ATTENUATION_VISCOACOUSTIC,
-                                    realw* h_A_newmark,realw* h_B_newmark,int* NO_BACKWARD_RECONSTRUCTION,realw* h_no_backward_acoustic_buffer) 
+void prepare_fields_acoustic_device_omp_(long* Mesh_pointer,
+                                         realw* rmass_acoustic, realw* rhostore, realw* kappastore,
+                                         int* num_phase_ispec_acoustic, int* phase_ispec_inner_acoustic,
+                                         int* ispec_is_acoustic,
+                                         int* num_free_surface_faces,
+                                         int* free_surface_ispec,
+                                         int* free_surface_ijk,
+                                         int* ELASTIC_SIMULATION,
+                                         int* num_coupling_ac_el_faces,
+                                         int* coupling_ac_el_ispec,
+                                         int* coupling_ac_el_ijk,
+                                         realw* coupling_ac_el_normal,
+                                         realw* coupling_ac_el_jacobian2Dw,
+                                         int * h_ninterface_acoustic,int * h_inum_interfaces_acoustic,int* ATTENUATION_VISCOACOUSTIC,
+                                         realw* h_A_newmark,realw* h_B_newmark,int* NO_BACKWARD_RECONSTRUCTION,realw* h_no_backward_acoustic_buffer) 
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer);
 
@@ -282,7 +286,7 @@ void prepare_fields_acoustic_device(long* Mesh_pointer,
     }
 
     // mass matrix
-    copy_todevice_realw((void**)&mp->d_rmass_acoustic,rmass_acoustic,mp->NGLOB_AB);
+    copy_to_omp_device_realw((void**)&mp->d_rmass_acoustic,rmass_acoustic,mp->NGLOB_AB);
 
     // density
     // Assuming NGLLX==5. Padded is then 32 (5^2+3)
@@ -291,22 +295,22 @@ void prepare_fields_acoustic_device(long* Mesh_pointer,
     // transfer constant element data with padding
     memcpy2D(mp->d_rhostore, NGLL2_PADDED*sizeof(realw),
                 rhostore, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                mp->NSPEC_AB, memcpyHostToDevice);
+                mp->NSPEC_AB);
 
     // non-padded array
-    copy_todevice_realw((void**)&mp->d_kappastore,kappastore,NGLL2*mp->NSPEC_AB);
+    copy_to_omp_device_realw((void**)&mp->d_kappastore,kappastore,NGLL2*mp->NSPEC_AB);
 
     // phase elements
     mp->num_phase_ispec_acoustic = *num_phase_ispec_acoustic;
-    copy_todevice_int((void**)&mp->d_phase_ispec_inner_acoustic,phase_ispec_inner_acoustic,
+    copy_to_omp_device_int((void**)&mp->d_phase_ispec_inner_acoustic,phase_ispec_inner_acoustic,
             2*mp->num_phase_ispec_acoustic);
-    copy_todevice_int((void**)&mp->d_ispec_is_acoustic,ispec_is_acoustic,mp->NSPEC_AB);
+    copy_to_omp_device_int((void**)&mp->d_ispec_is_acoustic,ispec_is_acoustic,mp->NSPEC_AB);
 
     // allocate surface arrays
     mp->num_free_surface_faces = *num_free_surface_faces;
     if (mp->num_free_surface_faces > 0) {
-        copy_todevice_int((void**)&mp->d_free_surface_ispec,free_surface_ispec,mp->num_free_surface_faces);
-        copy_todevice_int((void**)&mp->d_free_surface_ijk,free_surface_ijk,2*NGLLX*mp->num_free_surface_faces);
+        copy_to_omp_device_int((void**)&mp->d_free_surface_ispec,free_surface_ispec,mp->num_free_surface_faces);
+        copy_to_omp_device_int((void**)&mp->d_free_surface_ijk,free_surface_ijk,2*NGLLX*mp->num_free_surface_faces);
     }
 
     // absorbing boundaries
@@ -323,20 +327,20 @@ void prepare_fields_acoustic_device(long* Mesh_pointer,
 
     // coupling with elastic parts
     if (*ELASTIC_SIMULATION && *num_coupling_ac_el_faces > 0) {
-        copy_todevice_int((void**)&mp->d_coupling_ac_el_ispec,coupling_ac_el_ispec,(*num_coupling_ac_el_faces));
-        copy_todevice_int((void**)&mp->d_coupling_ac_el_ijk,coupling_ac_el_ijk,2*NGLLX*(*num_coupling_ac_el_faces));
-        copy_todevice_realw((void**)&mp->d_coupling_ac_el_normal,coupling_ac_el_normal,
+        copy_to_omp_device_int((void**)&mp->d_coupling_ac_el_ispec,coupling_ac_el_ispec,(*num_coupling_ac_el_faces));
+        copy_to_omp_device_int((void**)&mp->d_coupling_ac_el_ijk,coupling_ac_el_ijk,2*NGLLX*(*num_coupling_ac_el_faces));
+        copy_to_omp_device_realw((void**)&mp->d_coupling_ac_el_normal,coupling_ac_el_normal,
                 2*NGLLX*(*num_coupling_ac_el_faces));
-        copy_todevice_realw((void**)&mp->d_coupling_ac_el_jacobian2Dw,coupling_ac_el_jacobian2Dw,
+        copy_to_omp_device_realw((void**)&mp->d_coupling_ac_el_jacobian2Dw,coupling_ac_el_jacobian2Dw,
                 NGLLX*(*num_coupling_ac_el_faces));
     }
 
     mp->ninterface_acoustic = *h_ninterface_acoustic;
-    copy_todevice_int((void**)&mp->d_inum_interfaces_acoustic,h_inum_interfaces_acoustic,mp->num_interfaces_ext_mesh);
+    copy_to_omp_device_int((void**)&mp->d_inum_interfaces_acoustic,h_inum_interfaces_acoustic,mp->num_interfaces_ext_mesh);
 
     if (*ATTENUATION_VISCOACOUSTIC) {
-        copy_todevice_realw((void**)&mp->d_A_newmark_acous,h_A_newmark,NGLL2*mp->NSPEC_AB*N_SLS);
-        copy_todevice_realw((void**)&mp->d_B_newmark_acous,h_B_newmark,NGLL2*mp->NSPEC_AB*N_SLS);
+        copy_to_omp_device_realw((void**)&mp->d_A_newmark_acous,h_A_newmark,NGLL2*mp->NSPEC_AB*N_SLS);
+        copy_to_omp_device_realw((void**)&mp->d_B_newmark_acous,h_B_newmark,NGLL2*mp->NSPEC_AB*N_SLS);
         malloc((void**)&mp->d_e1_acous,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
         memset(mp->d_e1_acous,0,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
         malloc((void**)&mp->d_sum_forces_old,mp->NSPEC_AB*sizeof(realw)*NGLL2);
@@ -353,10 +357,10 @@ void prepare_fields_acoustic_device(long* Mesh_pointer,
 }
 
 extern "C"
-void prepare_fields_acoustic_adj_dev(long* Mesh_pointer,
-                                     int* APPROXIMATE_HESS_KL,
-                                     int* ATTENUATION_VISCOACOUSTIC,
-                                     int* NO_BACKWARD_RECONSTRUCTION)
+void prepare_fields_acoustic_adj_dev_omp_(long* Mesh_pointer,
+                                      int* APPROXIMATE_HESS_KL,
+                                      int* ATTENUATION_VISCOACOUSTIC,
+                                      int* NO_BACKWARD_RECONSTRUCTION)
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer);
 
@@ -396,7 +400,7 @@ void prepare_fields_acoustic_adj_dev(long* Mesh_pointer,
 }
 
 extern "C"
-void prepare_fields_elastic_device(long* Mesh_pointer,
+void prepare_fields_elastic_device_omp_(long* Mesh_pointer,
                                    realw* rmassx, realw* rmassz,
                                    realw* rho_vp, realw* rho_vs,
                                    int* num_phase_ispec_elastic,
@@ -446,23 +450,23 @@ void prepare_fields_elastic_device(long* Mesh_pointer,
     }
 
     // mass matrix
-    copy_todevice_realw((void**)&mp->d_rmassx,rmassx,mp->NGLOB_AB);
-    copy_todevice_realw((void**)&mp->d_rmassz,rmassz,mp->NGLOB_AB);
+    copy_to_omp_device_realw((void**)&mp->d_rmassx,rmassx,mp->NGLOB_AB);
+    copy_to_omp_device_realw((void**)&mp->d_rmassz,rmassz,mp->NGLOB_AB);
 
     // element indices
-    copy_todevice_int((void**)&mp->d_ispec_is_elastic,ispec_is_elastic,mp->NSPEC_AB);
+    copy_to_omp_device_int((void**)&mp->d_ispec_is_elastic,ispec_is_elastic,mp->NSPEC_AB);
 
     // phase elements
     mp->num_phase_ispec_elastic = *num_phase_ispec_elastic;
 
-    copy_todevice_int((void**)&mp->d_phase_ispec_inner_elastic,phase_ispec_inner_elastic,2*mp->num_phase_ispec_elastic);
+    copy_to_omp_device_int((void**)&mp->d_phase_ispec_inner_elastic,phase_ispec_inner_elastic,2*mp->num_phase_ispec_elastic);
 
     // absorbing conditions
     if (mp->absorbing_conditions && mp->d_num_abs_boundary_faces > 0){
         // non-padded arrays
         // rho_vp, rho_vs non-padded; they are needed for stacey boundary condition
-        copy_todevice_realw((void**)&mp->d_rho_vp,rho_vp,NGLL2*mp->NSPEC_AB);
-        copy_todevice_realw((void**)&mp->d_rho_vs,rho_vs,NGLL2*mp->NSPEC_AB);
+        copy_to_omp_device_realw((void**)&mp->d_rho_vp,rho_vp,NGLL2*mp->NSPEC_AB);
+        copy_to_omp_device_realw((void**)&mp->d_rho_vs,rho_vs,NGLL2*mp->NSPEC_AB);
 
         // absorb_field array used for file i/o
         if (mp->absorbing_conditions && mp->d_num_abs_boundary_faces > 0) {
@@ -500,42 +504,42 @@ void prepare_fields_elastic_device(long* Mesh_pointer,
 
         memcpy2D(mp->d_c11store, NGLL2_PADDED*sizeof(realw),
                     c11store, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                    mp->NSPEC_AB, memcpyHostToDevice);
+                    mp->NSPEC_AB);
         memcpy2D(mp->d_c12store, NGLL2_PADDED*sizeof(realw),
                     c12store, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                    mp->NSPEC_AB, memcpyHostToDevice);
+                    mp->NSPEC_AB);
         memcpy2D(mp->d_c13store, NGLL2_PADDED*sizeof(realw),
                     c13store, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                    mp->NSPEC_AB, memcpyHostToDevice);
+                    mp->NSPEC_AB);
         memcpy2D(mp->d_c15store, NGLL2_PADDED*sizeof(realw),
                     c15store, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                    mp->NSPEC_AB, memcpyHostToDevice);
+                    mp->NSPEC_AB);
         memcpy2D(mp->d_c23store, NGLL2_PADDED*sizeof(realw),
                     c23store, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                    mp->NSPEC_AB, memcpyHostToDevice);
+                    mp->NSPEC_AB);
         memcpy2D(mp->d_c25store, NGLL2_PADDED*sizeof(realw),
                     c25store, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                    mp->NSPEC_AB, memcpyHostToDevice);
+                    mp->NSPEC_AB);
         memcpy2D(mp->d_c33store, NGLL2_PADDED*sizeof(realw),
                     c33store, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                    mp->NSPEC_AB, memcpyHostToDevice);
+                    mp->NSPEC_AB);
         memcpy2D(mp->d_c35store, NGLL2_PADDED*sizeof(realw),
                     c35store, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                    mp->NSPEC_AB, memcpyHostToDevice);
+                    mp->NSPEC_AB);
         memcpy2D(mp->d_c55store, NGLL2_PADDED*sizeof(realw),
                     c55store, NGLL2*sizeof(realw), NGLL2*sizeof(realw),
-                    mp->NSPEC_AB, memcpyHostToDevice);
+                    mp->NSPEC_AB);
     }
 
     mp->ninterface_elastic = *h_ninterface_elastic;
-    copy_todevice_int((void**)&mp->d_inum_interfaces_elastic,h_inum_interfaces_elastic,mp->num_interfaces_ext_mesh);
+    copy_to_omp_device_int((void**)&mp->d_inum_interfaces_elastic,h_inum_interfaces_elastic,mp->num_interfaces_ext_mesh);
 
 
     if (*ATTENUATION_VISCOELASTIC) {
-        copy_todevice_realw((void**)&mp->d_A_newmark_mu,h_A_newmark_mu,NGLL2*mp->NSPEC_AB*N_SLS);
-        copy_todevice_realw((void**)&mp->d_B_newmark_mu,h_B_newmark_mu,NGLL2*mp->NSPEC_AB*N_SLS);
-        copy_todevice_realw((void**)&mp->d_A_newmark_kappa,h_A_newmark_kappa,NGLL2*mp->NSPEC_AB*N_SLS);
-        copy_todevice_realw((void**)&mp->d_B_newmark_kappa,h_B_newmark_kappa,NGLL2*mp->NSPEC_AB*N_SLS);
+        copy_to_omp_device_realw((void**)&mp->d_A_newmark_mu,h_A_newmark_mu,NGLL2*mp->NSPEC_AB*N_SLS);
+        copy_to_omp_device_realw((void**)&mp->d_B_newmark_mu,h_B_newmark_mu,NGLL2*mp->NSPEC_AB*N_SLS);
+        copy_to_omp_device_realw((void**)&mp->d_A_newmark_kappa,h_A_newmark_kappa,NGLL2*mp->NSPEC_AB*N_SLS);
+        copy_to_omp_device_realw((void**)&mp->d_B_newmark_kappa,h_B_newmark_kappa,NGLL2*mp->NSPEC_AB*N_SLS);
         malloc((void**)&mp->d_e1,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
         memset(mp->d_e1,0,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
         malloc((void**)&mp->d_e11,mp->NSPEC_AB*sizeof(realw)*NGLL2*N_SLS);
@@ -552,7 +556,7 @@ void prepare_fields_elastic_device(long* Mesh_pointer,
 }
 
 extern "C"
-void prepare_fields_elastic_adj_dev(long* Mesh_pointer,
+void prepare_fields_elastic_adj_dev_omp_(long* Mesh_pointer,
                                     int* size_f,
                                     int* APPROXIMATE_HESS_KL)
 {
@@ -599,10 +603,10 @@ void prepare_fields_elastic_adj_dev(long* Mesh_pointer,
 
 // purely adjoint & kernel simulations
 extern "C"
-void prepare_sim2_or_3_const_device(long* Mesh_pointer,
-                                    int* nadj_rec_local,
-                                    realw* h_source_adjointe,
-                                    int* NSTEP) 
+void prepare_sim2_or_3_const_device_omp_(long* Mesh_pointer,
+                                     int* nadj_rec_local,
+                                     realw* h_source_adjointe,
+                                     int* NSTEP) 
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer);
 
@@ -611,21 +615,21 @@ void prepare_sim2_or_3_const_device(long* Mesh_pointer,
     if (mp->nadj_rec_local > 0) {
         malloc((void**)&mp->d_adj_sourcearrays,(mp->nadj_rec_local)*2*NGLL2*sizeof(realw));
 
-        copy_todevice_realw((void**)&mp->d_source_adjointe,h_source_adjointe,(*NSTEP)*(*nadj_rec_local)*NDIM);
+        copy_to_omp_device_realw((void**)&mp->d_source_adjointe,h_source_adjointe,(*NSTEP)*(*nadj_rec_local)*NDIM);
     }
 }
 
 extern "C"
-void prepare_cleanup_device(long* Mesh_pointer,
-                            int* ACOUSTIC_SIMULATION,
-                            int* ELASTIC_SIMULATION,
-                            int* ABSORBING_CONDITIONS,
-                            int* ANISOTROPY,
-                            int* APPROXIMATE_HESS_KL,
-                            int* ATTENUATION_VISCOACOUSTIC,
-                            int* ATTENUATION_VISCOELASTIC,
-                            int* NO_BACKWARD_RECONSTRUCTION,
-                            realw * h_no_backward_acoustic_buffer)
+void prepare_cleanup_device_omp_(long* Mesh_pointer,
+                             int* ACOUSTIC_SIMULATION,
+                             int* ELASTIC_SIMULATION,
+                             int* ABSORBING_CONDITIONS,
+                             int* ANISOTROPY,
+                             int* APPROXIMATE_HESS_KL,
+                             int* ATTENUATION_VISCOACOUSTIC,
+                             int* ATTENUATION_VISCOELASTIC,
+                             int* NO_BACKWARD_RECONSTRUCTION,
+                             realw * h_no_backward_acoustic_buffer)
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer);
 

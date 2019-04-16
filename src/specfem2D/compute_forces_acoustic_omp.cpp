@@ -36,7 +36,6 @@
 #include "mesh_constants_omp.h"
 
 
-
 // KERNEL 2 - acoustic compute forces kernel
 
 template<int FORWARD_OR_ADJOINT> void

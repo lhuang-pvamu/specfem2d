@@ -83,7 +83,7 @@
                          density,poroelastcoef,kmato,assign_external_model,rhoext,vsext,vpext, &
                          deltat,P_SV,displ_elastic, &
                          mu_k,kappa_k,ibool,hprime_xx,hprime_zz,xix,xiz,gammax,gammaz, &
-                         GPU_MODE,it,NSTEP,NSTEP_BETWEEN_COMPUTE_KERNELS
+                         GPU_MODE,OMP_MODE,it,NSTEP,NSTEP_BETWEEN_COMPUTE_KERNELS
 
   use specfem_par_gpu, only: Mesh_pointer,deltatf
 
@@ -106,7 +106,11 @@
   double precision :: xixl,xizl,gammaxl,gammazl
 
   ! elastic kernels
-  if (.not. GPU_MODE) then
+  if (GPU_MODE) then
+    call compute_kernels_elastic_cuda(Mesh_pointer,deltatf)
+  else if (OMP_MODE) then
+    call compute_kernels_elastic_omp(Mesh_pointer,deltatf)
+  else
     ! updates kernels on CPU
     do ispec = 1,nspec
       if (ispec_is_elastic(ispec)) then
@@ -193,10 +197,6 @@
     do iglob = 1,nglob
       rho_k(iglob) =  accel_elastic(1,iglob)*b_displ_elastic(1,iglob) + accel_elastic(2,iglob)*b_displ_elastic(2,iglob)
     enddo
-
-  else
-    ! updates kernels on GPU
-    call compute_kernels_elastic_cuda(Mesh_pointer,deltatf)
   endif
 
  do ispec = 1, nspec
@@ -313,7 +313,7 @@
                          hprime_xx,hprime_zz,xix,xiz,gammax,gammaz, &
                          potential_acoustic,b_potential_acoustic,potential_dot_dot_acoustic, &
                          accel_ac,b_displ_ac,NSTEP_BETWEEN_COMPUTE_KERNELS, &
-                         rho_ac_kl,kappa_ac_kl,rhop_ac_kl,alpha_ac_kl,GPU_MODE
+                         rho_ac_kl,kappa_ac_kl,rhop_ac_kl,alpha_ac_kl,GPU_MODE,OMP_MODE
 
   use specfem_par_gpu, only: Mesh_pointer,deltatf
 
@@ -324,8 +324,11 @@
   real(kind=CUSTOM_REAL) :: tempx1l,tempx2l,b_tempx1l,b_tempx2l
   double precision :: xixl,xizl,gammaxl,gammazl
 
-  if (.not. GPU_MODE) then
-    ! kernels on CPU
+  if (GPU_MODE) then
+    call compute_kernels_acoustic_cuda(Mesh_pointer,deltatf)
+  else if (OMP_MODE) then
+    call compute_kernels_acoustic_omp(Mesh_pointer,deltatf)
+  else
     do ispec = 1, nspec
       if (ispec_is_acoustic(ispec)) then
         do j = 1, NGLLZ
@@ -402,9 +405,6 @@
         enddo
       endif
     enddo
-  else
-    ! on GPU
-    call compute_kernels_acoustic_cuda(Mesh_pointer,deltatf)
   endif
 
   end subroutine compute_kernels_ac
@@ -430,7 +430,7 @@
                          rhot_kl,rhof_kl,sm_kl,eta_kl,B_kl,C_kl,M_kl,M_k, &
                          mufr_kl,mufr_k,rhob_kl,rhofb_kl, &
                          mufrb_kl,phi_kl,rhobb_kl,rhofbb_kl,phib_kl,cpI_kl,cpII_kl,cs_kl,ratio_kl, &
-                         GPU_MODE,NSTEP_BETWEEN_COMPUTE_KERNELS
+                         GPU_MODE,OMP_MODE,NSTEP_BETWEEN_COMPUTE_KERNELS
   implicit none
 
   !local variables
@@ -454,6 +454,7 @@
 
   ! safety check
   if (GPU_MODE) call stop_the_code('Error poroelastic kernels not implemented on GPUs yet')
+  if (OMP_MODE) call stop_the_code('Error poroelastic kernels not implemented in OMP yet')
 
   ! kernel contributions on global nodes
   do iglob = 1,nglob
@@ -708,7 +709,7 @@
                          accel_elastic,b_accel_elastic,accel_ac,b_accel_ac, &
                          rhorho_el_Hessian_final1,rhorho_el_Hessian_final2, &
                          rhorho_ac_Hessian_final1,rhorho_ac_Hessian_final2, &
-                         deltat,GPU_MODE,NSTEP_BETWEEN_COMPUTE_KERNELS
+                         deltat,GPU_MODE,OMP_MODE,NSTEP_BETWEEN_COMPUTE_KERNELS
 
   use specfem_par_gpu, only: Mesh_pointer
 
@@ -719,7 +720,12 @@
   integer :: i,j,ispec,iglob
 
 
-  if (.not. GPU_MODE) then
+  if (GPU_MODE) then
+    ! computes contribution to density and bulk modulus kernel
+    call compute_kernels_hess_cuda(Mesh_pointer,any_elastic,any_acoustic)
+  else if (GPU_MODE) then
+    call compute_kernels_hess_omp(Mesh_pointer,any_elastic,any_acoustic)
+  else
     ! elastic domains
     if (any_elastic) then
       ! approximate Hessians
@@ -767,10 +773,6 @@
       enddo
     endif
 
-  else
-    ! on GPU
-    ! computes contribution to density and bulk modulus kernel
-    call compute_kernels_hess_cuda(Mesh_pointer,any_elastic,any_acoustic)
   endif
 
   end subroutine compute_kernels_Hessian

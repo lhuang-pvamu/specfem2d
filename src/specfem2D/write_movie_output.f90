@@ -42,7 +42,7 @@
     b_potential_acoustic,b_potential_dot_acoustic,b_potential_dot_dot_acoustic, &
     displ_elastic,veloc_elastic,accel_elastic, &
     b_displ_elastic,rho_k,rho_kl, &
-    any_acoustic,any_elastic,GPU_MODE,P_SV,UNDO_ATTENUATION_AND_OR_PML,SIMULATION_TYPE,NO_BACKWARD_RECONSTRUCTION
+    any_acoustic,any_elastic,GPU_MODE,OMP_MODE,P_SV,UNDO_ATTENUATION_AND_OR_PML,SIMULATION_TYPE,NO_BACKWARD_RECONSTRUCTION
 
   use specfem_par_gpu, only: Mesh_pointer,tmp_displ_2D,tmp_veloc_2D,tmp_accel_2D,NGLOB_AB
 
@@ -89,6 +89,38 @@
     ! elastic domains
     if (any_elastic) then
       call transfer_fields_el_from_device(NDIM*NGLOB_AB,tmp_displ_2D,tmp_veloc_2D,tmp_accel_2D,Mesh_pointer)
+      if (P_SV) then
+        ! P-SV waves
+        displ_elastic(1,:) = tmp_displ_2D(1,:)
+        displ_elastic(2,:) = tmp_displ_2D(2,:)
+        veloc_elastic(1,:) = tmp_veloc_2D(1,:)
+        veloc_elastic(2,:) = tmp_veloc_2D(2,:)
+        accel_elastic(1,:) = tmp_accel_2D(1,:)
+        accel_elastic(2,:) = tmp_accel_2D(2,:)
+      else
+        ! SH waves
+        displ_elastic(1,:) = tmp_displ_2D(1,:)
+        veloc_elastic(1,:) = tmp_veloc_2D(1,:)
+        accel_elastic(1,:) = tmp_accel_2D(1,:)
+      endif
+    endif
+  endif
+
+  if (OMP_MODE) then
+    ! Fields transfer for imaging
+    ! acoustic domains
+    if (any_acoustic) then
+      if (.not. plot_b_wavefield_only) &
+        call transfer_fields_ac_from_omp_device(NGLOB_AB,potential_acoustic,potential_dot_acoustic, &
+                                            potential_dot_dot_acoustic,Mesh_pointer)
+      if ((SIMULATION_TYPE == 3 .and. (.not. NO_BACKWARD_RECONSTRUCTION) .and. &
+          (.not. UNDO_ATTENUATION_AND_OR_PML)) .or. plot_b_wavefield_only ) &
+          call transfer_b_fields_ac_from_omp_device(NGLOB_AB,b_potential_acoustic,b_potential_dot_acoustic, &
+                                                b_potential_dot_dot_acoustic,Mesh_pointer)
+    endif
+    ! elastic domains
+    if (any_elastic) then
+      call transfer_fields_el_from_omp_device(NDIM*NGLOB_AB,tmp_displ_2D,tmp_veloc_2D,tmp_accel_2D,Mesh_pointer)
       if (P_SV) then
         ! P-SV waves
         displ_elastic(1,:) = tmp_displ_2D(1,:)

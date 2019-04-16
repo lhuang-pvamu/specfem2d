@@ -34,12 +34,16 @@
 */
 
 #include "mesh_constants_omp.h"
+#include <cstring>
+
+
+using std::memcpy;
+
 
 // Transfer functions
-
 // for ELASTIC simulations
 extern "C"
-void transfer_fields_el_to_device(int* size, realw* displ, realw* veloc, realw* accel,long* Mesh_pointer)
+void transfer_fields_el_to_omp_device_(int* size, realw* displ, realw* veloc, realw* accel,long* Mesh_pointer)
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
 
@@ -49,7 +53,7 @@ void transfer_fields_el_to_device(int* size, realw* displ, realw* veloc, realw* 
 }
 
 extern "C"
-void transfer_fields_el_from_device(int* size, realw* displ, realw* veloc, realw* accel,long* Mesh_pointer)
+void transfer_fields_el_from_omp_device_(int* size, realw* displ, realw* veloc, realw* accel,long* Mesh_pointer)
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
 
@@ -59,7 +63,7 @@ void transfer_fields_el_from_device(int* size, realw* displ, realw* veloc, realw
 }
 
 extern "C"
-void transfer_b_fields_to_device(int* size, realw* b_displ, realw* b_veloc, realw* b_accel, long* Mesh_pointer) 
+void transfer_b_fields_to_omp_device_(int* size, realw* b_displ, realw* b_veloc, realw* b_accel, long* Mesh_pointer) 
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
 
@@ -69,7 +73,7 @@ void transfer_b_fields_to_device(int* size, realw* b_displ, realw* b_veloc, real
 }
 
 extern "C"
-void transfer_b_fields_from_device(int* size, realw* b_displ, realw* b_veloc, realw* b_accel,long* Mesh_pointer)
+void transfer_b_fields_from_omp_device_(int* size, realw* b_displ, realw* b_veloc, realw* b_accel,long* Mesh_pointer)
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
 
@@ -79,7 +83,7 @@ void transfer_b_fields_from_device(int* size, realw* b_displ, realw* b_veloc, re
 }
 
 extern "C"
-void transfer_accel_to_device(int* size, realw* accel,long* Mesh_pointer)
+void transfer_accel_to_omp_device_(int* size, realw* accel,long* Mesh_pointer)
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
 
@@ -87,7 +91,7 @@ void transfer_accel_to_device(int* size, realw* accel,long* Mesh_pointer)
 }
 
 extern "C"
-void transfer_accel_from_device(int* size, realw* accel,long* Mesh_pointer)
+void transfer_accel_from_omp_device_(int* size, realw* accel,long* Mesh_pointer)
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
 
@@ -95,7 +99,7 @@ void transfer_accel_from_device(int* size, realw* accel,long* Mesh_pointer)
 }
 
 extern "C"
-void transfer_b_accel_from_device(int* size, realw* b_accel,long* Mesh_pointer)
+void transfer_b_accel_from_omp_device_(int* size, realw* b_accel,long* Mesh_pointer)
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
 
@@ -103,7 +107,7 @@ void transfer_b_accel_from_device(int* size, realw* b_accel,long* Mesh_pointer)
 }
 
 extern "C"
-void transfer_b_displ_from_device(int* size, realw* displ,long* Mesh_pointer)
+void transfer_b_displ_from_omp_device_(int* size, realw* displ,long* Mesh_pointer)
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
 
@@ -111,7 +115,7 @@ void transfer_b_displ_from_device(int* size, realw* displ,long* Mesh_pointer)
 }
 
 extern "C"
-void transfer_displ_from_device(int* size, realw* displ,long* Mesh_pointer)
+void transfer_displ_from_omp_device_(int* size, realw* displ,long* Mesh_pointer)
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
 
@@ -119,7 +123,7 @@ void transfer_displ_from_device(int* size, realw* displ,long* Mesh_pointer)
 }
 
 extern "C"
-void transfer_kernels_el_to_host(long* Mesh_pointer,
+void transfer_kernels_el_to_omp_host_(long* Mesh_pointer,
                                  realw* h_rho_kl,
                                  realw* h_mu_kl,
                                  realw* h_kappa_kl,
@@ -135,7 +139,7 @@ void transfer_kernels_el_to_host(long* Mesh_pointer,
 
 // for ACOUSTIC simulations
 extern "C"
-void transfer_fields_ac_to_device(int* size,
+void transfer_fields_ac_to_omp_device_(int* size,
                                   realw* potential_acoustic,
                                   realw* potential_dot_acoustic,
                                   realw* potential_dot_dot_acoustic,
@@ -153,7 +157,7 @@ void transfer_fields_ac_to_device(int* size,
 }
 
 extern "C"
-void transfer_b_fields_ac_to_device(int* size,
+void transfer_b_fields_ac_to_omp_device_(int* size,
                                     realw* b_potential_acoustic,
                                     realw* b_potential_dot_acoustic,
                                     realw* b_potential_dot_dot_acoustic,
@@ -171,7 +175,7 @@ void transfer_b_fields_ac_to_device(int* size,
 }
 
 extern "C"
-void transfer_fields_ac_from_device(int* size,
+void transfer_fields_ac_from_omp_device_(int* size,
                                     realw* potential_acoustic,
                                     realw* potential_dot_acoustic,
                                     realw* potential_dot_dot_acoustic,
@@ -188,7 +192,7 @@ void transfer_fields_ac_from_device(int* size,
 }
 
 extern "C"
-void transfer_b_fields_ac_from_device(int* size,
+void transfer_b_fields_ac_from_omp_device_(int* size,
                                       realw* b_potential_acoustic,
                                       realw* b_potential_dot_acoustic,
                                       realw* b_potential_dot_dot_acoustic,
@@ -205,7 +209,7 @@ void transfer_b_fields_ac_from_device(int* size,
 }
 
 extern "C"
-void transfer_b_potential_ac_from_device(int* size,
+void transfer_b_potential_ac_from_omp_device_(int* size,
                                          realw* b_potential_acoustic,
                                          long* Mesh_pointer) 
 {
@@ -215,7 +219,7 @@ void transfer_b_potential_ac_from_device(int* size,
 }
 
 extern "C"
-void transfer_b_potential_ac_to_device(int* size,
+void transfer_b_potential_ac_to_omp_device_(int* size,
                                        realw* b_potential_acoustic,
                                        long* Mesh_pointer) 
 {
@@ -225,7 +229,7 @@ void transfer_b_potential_ac_to_device(int* size,
 }
 
 extern "C"
-void transfer_dot_dot_from_device(int* size, realw* potential_dot_dot_acoustic,long* Mesh_pointer) 
+void transfer_dot_dot_from_omp_device_(int* size, realw* potential_dot_dot_acoustic,long* Mesh_pointer) 
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer);
 
@@ -234,7 +238,7 @@ void transfer_dot_dot_from_device(int* size, realw* potential_dot_dot_acoustic,l
 }
 
 extern "C"
-void transfer_b_dot_dot_from_device(int* size, realw* b_potential_dot_dot_acoustic,long* Mesh_pointer) 
+void transfer_b_dot_dot_from_omp_device_(int* size, realw* b_potential_dot_dot_acoustic,long* Mesh_pointer) 
 {
     //get mesh pointer out of fortran integer container
     Mesh* mp = (Mesh*)(*Mesh_pointer);
@@ -244,7 +248,7 @@ void transfer_b_dot_dot_from_device(int* size, realw* b_potential_dot_dot_acoust
 }
 
 extern "C"
-void transfer_kernels_ac_to_host(long* Mesh_pointer,realw* h_rho_ac_kl,realw* h_kappa_ac_kl,int* NSPEC_AB) 
+void transfer_kernels_ac_to_omp_host_(long* Mesh_pointer,realw* h_rho_ac_kl,realw* h_kappa_ac_kl,int* NSPEC_AB) 
 {
     //get mesh pointer out of fortran integer container
     Mesh* mp = (Mesh*)(*Mesh_pointer);
@@ -258,7 +262,7 @@ void transfer_kernels_ac_to_host(long* Mesh_pointer,realw* h_rho_ac_kl,realw* h_
 
 // for Hess kernel calculations
 extern "C"
-void transfer_kernels_hess_el_tohost(long* Mesh_pointer,realw* h_hess_kl,int* NSPEC_AB) 
+void transfer_kernels_hess_el_to_omp_host_(long* Mesh_pointer,realw* h_hess_kl,int* NSPEC_AB) 
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer);
 
@@ -266,7 +270,7 @@ void transfer_kernels_hess_el_tohost(long* Mesh_pointer,realw* h_hess_kl,int* NS
 }
 
 extern "C"
-void transfer_kernels_hess_ac_tohost(long* Mesh_pointer,realw* h_hess_ac_kl,int* NSPEC_AB) 
+void transfer_kernels_hess_ac_to_omp_host_(long* Mesh_pointer,realw* h_hess_ac_kl,int* NSPEC_AB) 
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer);
 
@@ -275,7 +279,7 @@ void transfer_kernels_hess_ac_tohost(long* Mesh_pointer,realw* h_hess_ac_kl,int*
 
 //For UNDO_ATTENUATION
 extern "C"
-void transfer_viscoacoustic_b_var_to_device(int* size,
+void transfer_viscoacoustic_b_var_to_omp_device_(int* size,
                                             realw* b_e1_acous_sf,
                                             realw* b_sum_forces_old,
                                             long* Mesh_pointer) 
@@ -286,7 +290,7 @@ void transfer_viscoacoustic_b_var_to_device(int* size,
 }
 
 extern "C"
-void transfer_viscoacoustic_var_from_device(int* size,
+void transfer_viscoacoustic_var_from_omp_device_(int* size,
                                             realw* e1_acous_sf,
                                             realw* sum_forces_old,
                                             long* Mesh_pointer) 
@@ -298,7 +302,7 @@ void transfer_viscoacoustic_var_from_device(int* size,
 }
 
 extern "C"
-void transfer_async_pot_ac_from_device(realw* pot_buffer,long* Mesh_pointer)
+void transfer_async_pot_ac_from_omp_device_(realw* pot_buffer,long* Mesh_pointer)
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
 
@@ -321,7 +325,7 @@ void transfer_async_pot_ac_from_device(realw* pot_buffer,long* Mesh_pointer)
 }
 
 extern "C"
-void transfer_async_pot_ac_to_device(realw* pot_buffer, long* Mesh_pointer) 
+void transfer_async_pot_ac_to_omp_device_(realw* pot_buffer, long* Mesh_pointer) 
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
 

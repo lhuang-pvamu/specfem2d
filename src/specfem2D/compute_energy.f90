@@ -35,7 +35,7 @@
 
   use constants, only: IOUT_ENERGY,CUSTOM_REAL
 
-  use specfem_par, only: GPU_MODE,myrank,it,deltat,kinetic_energy,potential_energy,t0
+  use specfem_par, only: GPU_MODE,OMP_MODE,myrank,it,deltat,kinetic_energy,potential_energy,t0
 
   implicit none
 
@@ -43,7 +43,7 @@
   real(kind=CUSTOM_REAL) :: kinetic_energy_total,potential_energy_total
 
   ! safety check
-  if (GPU_MODE) call stop_the_code('Error computing energy for output is not implemented on GPUs yet')
+  if (GPU_MODE .OR. OMP_MODE) call stop_the_code('Error computing energy for output is not implemented on GPU/OMP yet')
 
   ! computes energy
   call compute_energy()

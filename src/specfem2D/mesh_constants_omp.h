@@ -23,6 +23,9 @@ typedef float realw;
 typedef realw* __restrict__ realw_p;
 typedef const realw* __restrict__ realw_const_p;
 
+// number of standard linear solids
+#define N_SLS 3
+
 typedef struct mesh_ {
   // mesh resolution
   int NSPEC_AB;

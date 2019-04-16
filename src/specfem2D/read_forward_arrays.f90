@@ -61,7 +61,7 @@
 
     close(55)
 
-    if (GPU_MODE) then
+    if (GPU_MODE .OR. OMP_MODE) then
       ! transfers fields onto GPU
       call transfer_b_fields_ac_to_device(NGLOB_AB,b_potential_acoustic, &
                                           b_potential_dot_acoustic, &
@@ -92,7 +92,7 @@
       b_accel_elastic(2,:) = 0._CUSTOM_REAL
     endif
 
-    if (GPU_MODE) then
+    if (GPU_MODE .OR. OMP_MODE) then
       ! prepares wavefields for transfering
       if (P_SV) then
         tmp_displ_2D(1,:) = b_displ_elastic(1,:)
@@ -135,8 +135,8 @@
     close(56)
 
     ! safety check
-    if (GPU_MODE) then
-      call stop_the_code('GPU_MODE error: sorry, reading lastframe from poroelastic simulation not implemented yet')
+    if (GPU_MODE .OR. OMP_MODE) then
+      call stop_the_code('GPU/OMP_MODE error: sorry, reading lastframe from poroelastic simulation not implemented yet')
     endif
   endif
 
@@ -157,7 +157,7 @@
     b_potential_acoustic,b_potential_dot_acoustic,b_potential_dot_dot_acoustic, &
     b_displ_elastic,b_veloc_elastic,b_accel_elastic,b_e1,b_e11,b_e13, &
     b_dux_dxl_old,b_duz_dzl_old,b_dux_dzl_plus_duz_dxl_old,b_e1_acous_sf,b_sum_forces_old, &
-    GPU_MODE,nspec_ATT_ac,nglob
+    GPU_MODE,OMP_MODE,nspec_ATT_ac,nglob
 
   use specfem_par_gpu, only: Mesh_pointer
 
@@ -183,12 +183,12 @@
     read(IIN_UNDO_ATT) b_potential_dot_dot_acoustic
     read(IIN_UNDO_ATT) b_potential_dot_acoustic
     read(IIN_UNDO_ATT) b_potential_acoustic
-    if (GPU_MODE) call transfer_b_fields_ac_to_device(nglob,b_potential_acoustic,b_potential_dot_acoustic, &
+    if (GPU_MODE .OR. OMP_MODE) call transfer_b_fields_ac_to_device(nglob,b_potential_acoustic,b_potential_dot_acoustic, &
                                                         b_potential_dot_dot_acoustic,Mesh_pointer)
     if (ATTENUATION_VISCOACOUSTIC) then
       read(IIN_UNDO_ATT) b_e1_acous_sf
       read(IIN_UNDO_ATT) b_sum_forces_old
-      if (GPU_MODE) call transfer_viscoacoustic_b_var_to_device(NGLLX*NGLLZ*nspec_ATT_ac,b_e1_acous_sf, &
+      if (GPU_MODE .OR. OMP_MODE) call transfer_viscoacoustic_b_var_to_device(NGLLX*NGLLZ*nspec_ATT_ac,b_e1_acous_sf, &
                                                                 b_sum_forces_old,Mesh_pointer)
     endif
   endif
@@ -223,7 +223,7 @@
   use specfem_par, only: myrank,it,any_acoustic,any_elastic, &
     b_potential_acoustic,b_displ_elastic,b_accel_elastic, &
     nglob,no_backward_acoustic_buffer,no_backward_displ_buffer,no_backward_accel_buffer, &
-    no_backward_iframe,no_backward_Nframes,GPU_MODE,NSTEP
+    no_backward_iframe,no_backward_Nframes,GPU_MODE,OMP_MODE,NSTEP
 
   use specfem_par_gpu, only: Mesh_pointer
 
@@ -265,7 +265,7 @@
            no_backward_acoustic_buffer(nglob*buffer_num_async_IO+1:nglob*(buffer_num_async_IO+1))
 
     if (no_backward_iframe /= 1) then
-      if (GPU_MODE) then
+      if (GPU_MODE .OR. OMP_MODE) then
         ! this function ensures the previous async transfer is finished, and
         ! launches the transfer of the next wavefield
         call transfer_async_pot_ac_to_device(no_backward_acoustic_buffer(nglob*buffer_num_GPU_transfer+1),Mesh_pointer)

@@ -46,7 +46,7 @@
                          rhorho_el_Hessian_final1, rhorho_el_Hessian_final2, &
                          rhot_kl, rhof_kl, sm_kl, eta_kl, mufr_kl, B_kl, &
                          C_kl, M_kl, rhob_kl, rhofb_kl, phi_kl, mufrb_kl, &
-                         rhobb_kl, rhofbb_kl, phib_kl, cpI_kl, cpII_kl, cs_kl, ratio_kl, GPU_MODE
+                         rhobb_kl, rhofbb_kl, phib_kl, cpI_kl, cpII_kl, cs_kl, ratio_kl, GPU_MODE, OMP_MODE
 
   use specfem_par, only: ispec_is_anisotropic, c11_kl, c13_kl, c15_kl, c33_kl, c35_kl, c55_kl
 
@@ -167,7 +167,7 @@
   if (any_poroelastic) then
     ! poro-elastic domains
     ! checks
-    if (GPU_MODE) call stop_the_code('poroelastic kernel output not implemented on GPUs yet')
+    if (GPU_MODE .OR. OMP_MODE) call stop_the_code('poroelastic kernel output not implemented on GPUs yet')
     if (.not. SAVE_ASCII_KERNELS) call stop_the_code('poroelastic simulations must use SAVE_ASCII_KERNELS')
     ! ascii format
     do ispec = 1, nspec

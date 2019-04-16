@@ -430,7 +430,7 @@
         ! UNDO_ATTENUATION_AND_OR_PML) .and. (.not. NO_BACKWARD_RECONSTRUCTION)
 
   ! frees memory
-  if (GPU_MODE) then
+  if (GPU_MODE .OR. OMP_MODE) then
     ! frees temporary arrays
     if (any_elastic) deallocate(tmp_displ_2D,tmp_veloc_2D,tmp_accel_2D)
 

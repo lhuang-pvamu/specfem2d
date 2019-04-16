@@ -239,11 +239,11 @@
 
   ! puts acoustic initial fields onto OMP
   if (any_acoustic) then
-    call transfer_fields_ac_to_device(NGLOB_AB,potential_acoustic, &
+    call transfer_fields_ac_to_omp_device(NGLOB_AB,potential_acoustic, &
                                       potential_dot_acoustic,potential_dot_dot_acoustic,Mesh_pointer)
 
     if (SIMULATION_TYPE == 3 .and. .not. NO_BACKWARD_RECONSTRUCTION) &
-      call transfer_b_fields_ac_to_device(NGLOB_AB,b_potential_acoustic, &
+      call transfer_b_fields_ac_to_omp_device(NGLOB_AB,b_potential_acoustic, &
                                           b_potential_dot_acoustic,b_potential_dot_dot_acoustic,Mesh_pointer)
   endif
 
@@ -259,7 +259,7 @@
     tmp_accel_2D(:,:) = accel_elastic(:,:)
 
     ! transfers forward fields to device with initial values
-    call transfer_fields_el_to_device(NDIM*NGLOB_AB,tmp_displ_2D,tmp_veloc_2D,tmp_accel_2D,Mesh_pointer)
+    call transfer_fields_el_to_omp_device(NDIM*NGLOB_AB,tmp_displ_2D,tmp_veloc_2D,tmp_accel_2D,Mesh_pointer)
 
     if (SIMULATION_TYPE == 3) then
       tmp_displ_2D(:,:) = b_displ_elastic(:,:)
@@ -267,7 +267,7 @@
       tmp_accel_2D(:,:) = b_accel_elastic(:,:)
 
       ! transfers backward fields to device with initial values
-      call transfer_b_fields_to_device(NDIM*NGLOB_AB,tmp_displ_2D,tmp_veloc_2D,tmp_accel_2D,Mesh_pointer)
+      call transfer_b_fields_to_omp_device(NDIM*NGLOB_AB,tmp_displ_2D,tmp_veloc_2D,tmp_accel_2D,Mesh_pointer)
     endif
   endif
 

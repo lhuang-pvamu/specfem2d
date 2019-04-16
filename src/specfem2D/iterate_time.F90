@@ -108,7 +108,7 @@ subroutine iterate_time()
        call exit_MPI(myrank,'timing for element weights should be done with NSTEP_BETWEEN_OUTPUT_INFO not smaller than NSTEP / 5')
     if (SIMULATION_TYPE /= 1) call exit_MPI(myrank,'timing for element weights should be done with SIMULATION_TYPE = 1')
     if (.not. P_SV) call exit_MPI(myrank,'timing for element weights should be done with P_SV set to true')
-    if (GPU_MODE) call exit_MPI(myrank,'timing for element weights should be done with GPU_MODE turned off')
+    if (GPU_MODE .OR. OMP_MODE) call exit_MPI(myrank,'timing for element weights should be done with OMP/GPU_MODE turned off')
     if (save_ASCII_seismograms) &
        call exit_MPI(myrank,'timing for element weights should be done with save_ASCII_seismograms turned off')
     if (save_binary_seismograms_single) &
@@ -164,23 +164,25 @@ subroutine iterate_time()
 
       ! elastic domains
       if (ELASTIC_SIMULATION) then
-        if (.not. GPU_MODE) then
-          call compute_forces_viscoelastic_main()
-          if (SIMULATION_TYPE == 3 .and. .not. NO_BACKWARD_RECONSTRUCTION) call compute_forces_viscoelastic_main_backward()
-        else
-          ! on GPU
+        if (GPU_MODE) then
           if (any_elastic) call compute_forces_viscoelastic_GPU()
+        else if (OMP_MODE) then
+          if (any_elastic) call exit_MPI(myrank,'poroelastic not implemented in OMP MODE yet')
+          !if (any_elastic) call compute_forces_viscoelastic_OMP()
+        else
+          if (SIMULATION_TYPE == 3 .and. .not. NO_BACKWARD_RECONSTRUCTION) call compute_forces_viscoelastic_main_backward()
         endif
       endif
 
       ! poroelastic domains
       if (POROELASTIC_SIMULATION) then
-        if (.not. GPU_MODE) then
+        if (GPU_MODE) then
+          if (any_poroelastic) call exit_MPI(myrank,'poroelastic not implemented in GPU MODE yet')
+      else if (OMP_MODE) then
+          if (any_poroelastic) call exit_MPI(myrank,'poroelastic not implemented in OMP MODE yet')
+        else
           call compute_forces_poroelastic_main()
           if (SIMULATION_TYPE == 3) call compute_forces_poroelastic_main_backward()
-        else
-          ! on GPU
-          if (any_poroelastic) call exit_MPI(myrank,'poroelastic not implemented in GPU MODE yet')
         endif
       endif
 
@@ -267,7 +269,7 @@ subroutine iterate_time()
 ! *********************************************************!
 
   ! Transfer fields from GPU card to host for further analysis
-  if (GPU_MODE) call it_transfer_from_GPU()
+  if (GPU_MODE .OR. OMP_MODE) call it_transfer_from_GPU()
 
 
   !----  formats
@@ -296,13 +298,22 @@ subroutine it_transfer_from_GPU()
   ! Fields transfer for imaging
   ! acoustic domains
   if (any_acoustic ) then
-    call transfer_fields_ac_from_device(NGLOB_AB,potential_acoustic,potential_dot_acoustic, &
-                                        potential_dot_dot_acoustic,Mesh_pointer)
+    if (GPU_MODE ) then
+      call transfer_fields_ac_from_device(NGLOB_AB,potential_acoustic,potential_dot_acoustic, &
+                                          potential_dot_dot_acoustic,Mesh_pointer)
+    else
+      call transfer_fields_ac_from_device(NGLOB_AB,potential_acoustic,potential_dot_acoustic, &
+                                          potential_dot_dot_acoustic,Mesh_pointer)
+    endif
   endif
 
   ! elastic domains
   if (any_elastic) then
-    call transfer_fields_el_from_device(NDIM*NGLOB_AB,tmp_displ_2D,tmp_veloc_2D,tmp_accel_2D,Mesh_pointer)
+    if (GPU_MODE) then 
+      call transfer_fields_el_from_device(NDIM*NGLOB_AB,tmp_displ_2D,tmp_veloc_2D,tmp_accel_2D,Mesh_pointer)
+    else
+      call transfer_fields_el_from_omp_device(NDIM*NGLOB_AB,tmp_displ_2D,tmp_veloc_2D,tmp_accel_2D,Mesh_pointer)
+    endif
 
     if (P_SV) then
       ! P-SV waves
@@ -327,7 +338,11 @@ subroutine it_transfer_from_GPU()
     ! Kernel transfer
     ! acoustic domains
     if (any_acoustic) then
-      call transfer_kernels_ac_to_host(Mesh_pointer,rho_ac_kl,kappa_ac_kl,NSPEC_AB)
+      if (GPU_MODE) then 
+        call transfer_kernels_ac_to_host(Mesh_pointer,rho_ac_kl,kappa_ac_kl,NSPEC_AB)
+      else
+        call transfer_kernels_ac_to_omp_host(Mesh_pointer,rho_ac_kl,kappa_ac_kl,NSPEC_AB)
+      endif
       rho_ac_kl(:,:,:) = rho_ac_kl(:,:,:) * NSTEP_BETWEEN_COMPUTE_KERNELS
       kappa_ac_kl(:,:,:) = kappa_ac_kl(:,:,:) * NSTEP_BETWEEN_COMPUTE_KERNELS
       rhop_ac_kl(:,:,:) = rho_ac_kl(:,:,:) + kappa_ac_kl(:,:,:)
@@ -340,7 +355,12 @@ subroutine it_transfer_from_GPU()
 
     ! elastic domains
     if (any_elastic) then
-      call transfer_kernels_el_to_host(Mesh_pointer,rho_kl,mu_kl,kappa_kl,NSPEC_AB)
+      if (GPU_MODE) then
+        call transfer_kernels_el_to_host(Mesh_pointer,rho_kl,mu_kl,kappa_kl,NSPEC_AB)
+      else
+        call transfer_kernels_el_to_omp_host(Mesh_pointer,rho_kl,mu_kl,kappa_kl,NSPEC_AB)
+      endif
+
 
       ! Multiply each kernel point with the local coefficient
       do ispec = 1, nspec

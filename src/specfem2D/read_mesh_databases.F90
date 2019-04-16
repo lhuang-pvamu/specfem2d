@@ -188,6 +188,8 @@
   read(IIN) PERIODIC_HORIZ_DIST
 
   read(IIN) GPU_MODE
+  
+!  read(IIN) OMP_MODE
 
   read(IIN) setup_with_binary_database
 

@@ -254,16 +254,16 @@ specfem2D_OBJECTS += $(JPEGLIB_OBJECTS)
 ## OMP files
 ##
 omp_specfem2D_OBJECTS = \
-	$O/compute_forces_acoustic_omp.cpp.o \
 	$O/compute_add_sources_viscoacoustic_omp.cpp.o \
 	$O/compute_coupling_omp.cpp.o \
-	$O/compute_stacey_acoustic_omp.cpp.o \
-	$O/update_displacement_omp.cpp.o \
 	$O/compute_forces_acoustic_omp.cpp.o \
+	$O/compute_kernels_omp.cpp.o \
+	$O/compute_stacey_acoustic_omp.cpp.o \
 	$O/prepare_mesh_constants_omp.cpp.o \
+	$O/transfer_fields_omp.cpp.o \
+	$O/update_displacement_omp.cpp.o \
 	$O/write_seismograms_omp.cpp.o \
 	$(EMPTY_MACRO)
-#	$O/compute_kernels_omp.cpp.o \
 
 ###
 ### CUDA
