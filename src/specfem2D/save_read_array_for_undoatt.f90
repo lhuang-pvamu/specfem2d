@@ -62,7 +62,10 @@
   if (ier /= 0 ) call exit_MPI(myrank,'Error opening file proc***_save_frame_at** for writing')
 
   if (any_acoustic) then
-    if (GPU_MODE .OR. OMP_MODE) call transfer_fields_ac_from_device(nglob,potential_acoustic,potential_dot_acoustic, &
+    if (GPU_MODE) call transfer_fields_ac_from_device(nglob,potential_acoustic,potential_dot_acoustic, &
+                                                      potential_dot_dot_acoustic,Mesh_pointer)
+
+    if (OMP_MODE) call transfer_fields_ac_from_omp_device(nglob,potential_acoustic,potential_dot_acoustic, &
                                                       potential_dot_dot_acoustic,Mesh_pointer)
     write(IOUT_UNDO_ATT) potential_dot_dot_acoustic
     write(IOUT_UNDO_ATT) potential_dot_acoustic

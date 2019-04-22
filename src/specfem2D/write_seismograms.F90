@@ -64,7 +64,6 @@
 
     ! updates local receiver records
     if (nrecloc > 0) then
-
       ! computes seismogram entry for all local receivers
       if ( GPU_MODE) then
         ! on GPU
@@ -79,23 +78,22 @@
                                                        NSTEP_BETWEEN_OUTPUT_SEISMOS/subsamp_seismos, &
                                                        ELASTIC_SIMULATION,ACOUSTIC_SIMULATION,0)
           endif
-          ! note: curl not implemented yet
         endif
-    else if ( OMP_MODE) then
+      else if ( OMP_MODE) then
         if (SIMULATION_TYPE == 1) then
           ! Simulating seismograms
           if (USE_TRICK_FOR_BETTER_PRESSURE) then
-            call compute_seismograms_cuda(Mesh_pointer,seismotype,sisux,sisuz,seismo_current, &
+            call compute_seismograms_omp(Mesh_pointer,seismotype,sisux,sisuz,seismo_current, &
                                                        NSTEP_BETWEEN_OUTPUT_SEISMOS/subsamp_seismos, &
                                                        ELASTIC_SIMULATION,ACOUSTIC_SIMULATION,1)
           else
-            call compute_seismograms_cuda(Mesh_pointer,seismotype,sisux,sisuz,seismo_current, &
+            call compute_seismograms_omp(Mesh_pointer,seismotype,sisux,sisuz,seismo_current, &
                                                        NSTEP_BETWEEN_OUTPUT_SEISMOS/subsamp_seismos, &
                                                        ELASTIC_SIMULATION,ACOUSTIC_SIMULATION,0)
           endif
           ! note: curl not implemented yet
         endif
-    else
+      else
         ! on CPU
         do irecloc = 1,nrecloc
 
@@ -166,9 +164,7 @@
           endif
         enddo ! irecloc
       endif ! GPU_MODE & ! OMP_MODE
-
     endif ! nrecloc
-
   endif ! subsamp_seismos
 
   ! save temporary or final seismograms

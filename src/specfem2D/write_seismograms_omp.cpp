@@ -136,7 +136,7 @@ void compute_acoustic_seismogram_kernel_omp(int nrec_local,
 }
 
 extern "C"
-void compute_seismograms_omp(long* Mesh_pointer_f,
+void compute_seismograms_omp_(long* Mesh_pointer_f,
                               int* seismotypef,
                               double* sisux, double* sisuz,
                               int* seismo_currentf,

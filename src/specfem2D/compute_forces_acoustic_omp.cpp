@@ -34,6 +34,7 @@
    */
 
 #include "mesh_constants_omp.h"
+#include <iostream>
 
 
 // KERNEL 2 - acoustic compute forces kernel
@@ -64,7 +65,8 @@ Kernel_2_acoustic_omp_impl( const int nb_blocks_to_compute,
             realw s_temp3[NGLL2];
             realw sh_hprime_xx[NGLL2];
             realw sh_hprimewgll_xx[NGLL2];
-            realw sh_wxgll[NGLLX];
+            //realw sh_wxgll[NGLLX];//TODO: this looks like it should be NGLL2. Change later if it crashes
+            realw sh_wxgll[NGLL2];
             int offset = (d_phase_ispec_inner_acoustic[bx + num_phase_ispec_acoustic*(d_iphase-1)]-1)*NGLL2_PADDED + tx;
             int iglob = d_ibool[offset] - 1;
             // changing iglob indexing to match fortran row changes fast style
@@ -73,13 +75,24 @@ Kernel_2_acoustic_omp_impl( const int nb_blocks_to_compute,
                 s_dummy_loc[NGLL2+tx]=d_b_potential_acoustic[iglob];
             int J = (tx/NGLLX);
             int I = (tx-J*NGLLX);
+            //std::cout << "Offset =  " << offset << std::endl;
+            //std::cout << "d_xix =   " << d_xix << std::endl;
             realw xixl =  d_xix[offset] ;
+            //std::cout << "d_xiz = " << d_xiz << std::endl;
             realw xizl = d_xiz[offset];
+            //std::cout << "d_gammax = " << d_gammax << std::endl;
             realw gammaxl = d_gammax[offset];
+            //std::cout << "d_gammaz = " << d_gammaz << std::endl;
             realw gammazl = d_gammaz[offset];
             realw rho_invl_times_jacobianl = 1.f /(d_rhostore[offset] * (xixl*gammazl-gammaxl*xizl));
+
+            //crashing here?
+            //std::cout << "tx = " << tx << std::endl;
+            //std::cout << "d_hprime_xx = " << d_hprime_xx << std::endl;
             sh_hprime_xx[tx] = d_hprime_xx[tx];
+            //std::cout << "d_hprimewgll_xx = " << d_hprimewgll_xx << std::endl;
             sh_hprimewgll_xx[tx] = d_hprimewgll_xx[tx];
+            //std::cout << "d_wxgll = " << d_wxgll << std::endl;
             sh_wxgll[tx] = d_wxgll[tx];
             for (int k=0 ; k < nb_field ; k++) {
                 //__syncthreads();

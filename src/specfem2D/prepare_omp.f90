@@ -294,19 +294,18 @@
   call synchronize_all()
 
   ! outputs OMP usage to files for all processes
-  call output_free_device_memory(myrank)
+  ! call output_free_device_memory(myrank)
 
   ! outputs usage for main process
-  if (myrank == 0) then
-    call get_free_device_memory(free_mb,used_mb,total_mb)
-
-    write(IMAIN,*)
-    write(IMAIN,*) "OMP usage: free  =",free_mb," MB",nint(free_mb/total_mb*100.0),"%"
-    write(IMAIN,*) "           used  =",used_mb," MB",nint(used_mb/total_mb*100.0),"%"
-    write(IMAIN,*) "           total =",total_mb," MB",nint(total_mb/total_mb*100.0),"%"
-    write(IMAIN,*)
-    call flush_IMAIN()
-  endif
+  !if (myrank == 0) then
+  !  call get_free_device_memory(free_mb,used_mb,total_mb)
+  !  write(IMAIN,*)
+  !  write(IMAIN,*) "OMP usage: free  =",free_mb," MB",nint(free_mb/total_mb*100.0),"%"
+  !  write(IMAIN,*) "           used  =",used_mb," MB",nint(used_mb/total_mb*100.0),"%"
+  !  write(IMAIN,*) "           total =",total_mb," MB",nint(total_mb/total_mb*100.0),"%"
+  !  write(IMAIN,*)
+  !  call flush_IMAIN()
+  !endif
 
   ! frees temporary arrays
   deallocate(cosrot_irecf,sinrot_irecf)

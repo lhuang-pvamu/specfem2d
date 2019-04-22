@@ -302,8 +302,8 @@ subroutine it_transfer_from_GPU()
       call transfer_fields_ac_from_device(NGLOB_AB,potential_acoustic,potential_dot_acoustic, &
                                           potential_dot_dot_acoustic,Mesh_pointer)
     else
-      call transfer_fields_ac_from_device(NGLOB_AB,potential_acoustic,potential_dot_acoustic, &
-                                          potential_dot_dot_acoustic,Mesh_pointer)
+      call transfer_fields_ac_from_omp_device(NGLOB_AB,potential_acoustic,potential_dot_acoustic, &
+                                              potential_dot_dot_acoustic,Mesh_pointer)
     endif
   endif
 

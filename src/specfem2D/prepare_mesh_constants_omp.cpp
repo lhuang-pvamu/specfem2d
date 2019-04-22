@@ -34,14 +34,15 @@
 */
 
 #include "mesh_constants_omp.h"
+#include "prepare_constants_omp.h"
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 
 
 using std::free;
 //using std::malloc;
 
-//#include "prepare_constants_omp.h"
 
 void malloc(void** result, int size) {
     *result = std::malloc(size);
@@ -63,8 +64,10 @@ void copy_to_omp_device_realw(void** d_array_addr_ptr,realw* h_array,int size){
 
 void memcpy2D(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height)
 {
+    //std::cout << "memcpy2D to " << dst << ", dpitch = " << dpitch << ", from " << src << ", " << spitch << ", " << width << std::endl;
     for(int i=0; i<height; i++) {
         std::memcpy(dst+(i*dpitch), src+(i*spitch), width);
+        //std::cout << "copying to " << dst + (i*dpitch) << " from " << src+(i*spitch) << std::endl;
     }
 
 }
@@ -128,16 +131,24 @@ void prepare_constants_device_omp_(long* Mesh_pointer,
     mp->save_forward = *SAVE_FORWARD;
 
     // sets constant arrays
-    //setConst_hprime_xx(h_hprime_xx,mp);
+    setConst_hprime_xx_omp(h_hprime_xx,mp);
 
-    //setConst_hprimewgll_xx(h_hprimewgll_xx,mp);
+    setConst_hprimewgll_xx_omp(h_hprimewgll_xx,mp);
 
-    //setConst_wxgll(h_wxgll,mp);
+    setConst_wxgll_omp(h_wxgll,mp);
+
+    malloc((void**) &mp->d_hprime_xx, NGLL2*sizeof(realw));
 
     // Assuming NGLLX=5. Padded is then 32 (5^2+3)
     int size_padded = NGLL2_PADDED * (mp->NSPEC_AB);
 
+    //std::cout << " mp->d_xix " << mp->d_xix << std::endl;
     malloc((void**) &mp->d_xix, size_padded*sizeof(realw));
+    //std::cout << "mp->d_xix allocated size = " << size_padded*sizeof(realw) << std::endl;
+    //std::cout << " at " << mp->d_xix << std::endl;
+    //std::cout << " as " << *mp->d_xix << std::endl;
+
+
     malloc((void**) &mp->d_xiz, size_padded*sizeof(realw));
     malloc((void**) &mp->d_gammax, size_padded*sizeof(realw));
     malloc((void**) &mp->d_gammaz, size_padded*sizeof(realw));

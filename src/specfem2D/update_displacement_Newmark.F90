@@ -141,7 +141,11 @@
     endif
     ! on GPU
     ! handles both forward and backward
-    call update_displacement_newmark_GPU_acoustic(compute_b_wavefield)
+    if (GPU_MODE) then
+      call update_displacement_newmark_GPU_acoustic(compute_b_wavefield)
+    else
+      call update_displacement_newmark_OMP_acoustic(compute_b_wavefield)
+    endif
 
   else
     if (time_stepping_scheme == 1) then
@@ -194,9 +198,7 @@
 
   end subroutine update_displ_acoustic_backward
 
-!
 !------------------------------------------------------------------------------------------------
-!
 
   subroutine update_displ_elastic_forward()
 
@@ -209,7 +211,7 @@
   ! checks if anything to do in this slice
   if (.not. any_elastic) return
 
-  if ((.not. GPU_MODE) .OR. (.not. OMP_MODE)) then
+  if ((.not. GPU_MODE) .AND. (.not. OMP_MODE)) then
 
     ! for coupling with adjoint wavefield, stores old (at time t_n) wavefield
     if (SIMULATION_TYPE == 3) then
@@ -234,7 +236,11 @@
   else
     ! on GPU
     ! handles both forward and backward
-    call update_displacement_newmark_GPU_elastic()
+    if (GPU_MODE) then
+      call update_displacement_newmark_GPU_elastic()
+    else
+      call update_displacement_newmark_OMP_elastic()
+    endif
   endif
 
   end subroutine update_displ_elastic_forward
@@ -543,6 +549,37 @@
 !------------------------------------------------------------------------------------------------
 !
 
+  subroutine update_displacement_newmark_OMP_acoustic(compute_b_wavefield)
+
+  use specfem_par, only: SIMULATION_TYPE,PML_BOUNDARY_CONDITIONS,myrank,UNDO_ATTENUATION_AND_OR_PML
+
+  use specfem_par_gpu, only: Mesh_pointer,deltatf,deltatover2f,deltatsquareover2f,b_deltatf,b_deltatover2f, &
+    b_deltatsquareover2f
+
+  implicit none
+
+  logical :: compute_b_wavefield
+
+  ! update displacement using finite-difference time scheme (Newmark)
+
+  ! wavefields on GPU
+  ! check
+  if (SIMULATION_TYPE == 3) then
+    if (PML_BOUNDARY_CONDITIONS) then
+      call exit_MPI(myrank,'acoustic time marching scheme with PML_CONDITIONS on GPU not implemented yet...')
+    endif
+  endif
+
+  ! updates acoustic potentials
+  call update_displacement_ac_omp(Mesh_pointer,deltatf,deltatsquareover2f,deltatover2f,b_deltatf, &
+                                   b_deltatsquareover2f,b_deltatover2f,compute_b_wavefield,UNDO_ATTENUATION_AND_OR_PML)
+
+  end subroutine update_displacement_newmark_OMP_acoustic
+
+!
+!------------------------------------------------------------------------------------------------
+!
+
   subroutine update_displacement_newmark_GPU_elastic()
 
   use specfem_par, only: SIMULATION_TYPE,PML_BOUNDARY_CONDITIONS,myrank
@@ -568,6 +605,36 @@
                                 b_deltatf,b_deltatsquareover2f,b_deltatover2f)
 
   end subroutine update_displacement_newmark_GPU_elastic
+
+!
+!------------------------------------------------------------------------------------------------
+!
+
+  subroutine update_displacement_newmark_OMP_elastic()
+
+  use specfem_par, only: SIMULATION_TYPE,PML_BOUNDARY_CONDITIONS,myrank
+
+  use specfem_par_gpu, only: Mesh_pointer,deltatf,deltatover2f,deltatsquareover2f,b_deltatf,b_deltatover2f, &
+    b_deltatsquareover2f
+
+  implicit none
+
+  ! update displacement using finite-difference time scheme (Newmark)
+
+  ! wavefields on GPU
+  ! check
+  if (SIMULATION_TYPE == 3) then
+    if (PML_BOUNDARY_CONDITIONS) then
+      call exit_MPI(myrank,'elastic time marching scheme with PML_CONDITIONS on GPU not implemented yet...')
+    endif
+  endif
+
+  ! updates elastic displacement and velocity
+  ! Includes SIM_TYPE 1 & 3 (for noise tomography)
+  call update_displacement_omp(Mesh_pointer,deltatf,deltatsquareover2f,deltatover2f, &
+                                b_deltatf,b_deltatsquareover2f,b_deltatover2f)
+
+  end subroutine update_displacement_newmark_OMP_elastic
 
 
 !------------------------------------------------------------------------------------------------
