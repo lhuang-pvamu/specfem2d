@@ -61,12 +61,16 @@
 
     close(55)
 
-    if (GPU_MODE .OR. OMP_MODE) then
-      ! transfers fields onto GPU
+    if (GPU_MODE ) then
       call transfer_b_fields_ac_to_device(NGLOB_AB,b_potential_acoustic, &
                                           b_potential_dot_acoustic, &
                                           b_potential_dot_dot_acoustic, &
                                           Mesh_pointer)
+    else if (OMP_MODE) then
+      call transfer_b_fields_ac_to_omp_device(NGLOB_AB,b_potential_acoustic, &
+                                              b_potential_dot_acoustic, &
+                                              b_potential_dot_dot_acoustic, &
+                                              Mesh_pointer)
     else
       ! free surface for an acoustic medium
       call enforce_acoustic_free_surface(b_potential_dot_dot_acoustic,b_potential_dot_acoustic,b_potential_acoustic)
