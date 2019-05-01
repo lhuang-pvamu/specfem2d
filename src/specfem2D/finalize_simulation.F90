@@ -440,8 +440,9 @@
     deallocate(buffer_recv_scalar_gpu,b_buffer_recv_scalar_gpu)
     deallocate(buffer_send_vector_gpu,b_buffer_send_vector_gpu)
     deallocate(buffer_recv_vector_gpu,b_buffer_recv_vector_gpu)
+  endif
 
-    ! frees memory on GPU
+  if (GPU_MODE ) then
     call prepare_cleanup_device(Mesh_pointer,any_acoustic,any_elastic, &
                                 STACEY_ABSORBING_CONDITIONS, &
                                 ANISOTROPY, &
@@ -450,6 +451,16 @@
                                 ATTENUATION_VISCOELASTIC, &
                                 NO_BACKWARD_RECONSTRUCTION, &
                                 no_backward_acoustic_buffer)
+  endif
+  if (OMP_MODE ) then
+    call prepare_cleanup_device_omp(Mesh_pointer,any_acoustic,any_elastic, &
+                                   STACEY_ABSORBING_CONDITIONS, &
+                                   ANISOTROPY, &
+                                   APPROXIMATE_HESS_KL, &
+                                   ATTENUATION_VISCOACOUSTIC, &
+                                   ATTENUATION_VISCOELASTIC, &
+                                   NO_BACKWARD_RECONSTRUCTION, &
+                                   no_backward_acoustic_buffer)
   endif
 
   if (output_wavefield_dumps) deallocate(mask_ibool)

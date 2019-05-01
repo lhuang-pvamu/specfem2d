@@ -53,29 +53,30 @@ void compute_elastic_seismogram_kernel_omp(int nrec_local,
                                        int it,
                                        int NSTEP)
 {
-
-    // __shared__
-    realw sh_dxd[NGLL2_PADDED];
-    realw sh_dzd[NGLL2_PADDED];
-
     for( int irec_local=0; irec_local < nrec_local; irec_local++) {
-        //Should this be one loop over NGLL or 2?
-        for(int tx = 0; tx < NGLLX; tx++) {
+        realw sh_dxd = 0;//[NGLL2_PADDED]{0};
+        realw sh_dzd = 0;//[NGLL2_PADDED]{0};
+        for(int tx = 0; tx < NGLL2; tx++) {
             int J = (tx/NGLLX);
             int I = (tx-J*NGLLX);
             int ispec = ispec_selected_rec_loc[irec_local] - 1;
-            sh_dxd[tx] = 0;
-            sh_dzd[tx] = 0;
-            if (tx < NGLL2) {
-                realw hlagrange = hxir[irec_local + nrec_local*I] * hgammar[irec_local + nrec_local*J];
-                int iglob = d_ibool[tx+NGLL2_PADDED*ispec] - 1;
-        
-                sh_dxd[tx] = hlagrange * field[0 + 2*iglob];
-                sh_dzd[tx] = hlagrange * field[1 + 2*iglob];
-            }
-        //__syncthreads();
+            realw hlagrange = hxir[irec_local + nrec_local*I] * hgammar[irec_local + nrec_local*J];
+            int iglob = d_ibool[tx+NGLL2_PADDED*ispec] - 1;
+
+            sh_dxd += hlagrange * field[0 + 2*iglob];
+            sh_dzd += hlagrange * field[1 + 2*iglob];
+        } //__syncthreads();
 
         // reduction
+        //for(int s=1;s<NGLL2;s++) {
+        //    sh_dxd[0] += sh_dxd[s];
+        //    sh_dzd[0] += sh_dzd[s];
+        //}
+        // rotate seismogram components
+        seismograms[irec_local]            =    cosrot[irec_local]*sh_dxd + sinrot[irec_local]*sh_dzd;
+        seismograms[irec_local+nrec_local] =  - sinrot[irec_local]*sh_dxd + cosrot[irec_local]*sh_dzd;
+    }
+        /*
             for (int s=1; s<NGLL2_PADDED ; s *= 2) {
             if (tx % (2*s) == 0) {
                     sh_dxd[tx] += sh_dxd[tx + s];
@@ -83,7 +84,6 @@ void compute_elastic_seismogram_kernel_omp(int nrec_local,
                 }
                 //__syncthreads();
             }
-    
             if (tx == 0) {
                 seismograms[irec_local*NSTEP + it]                    = cosrot[irec_local]*sh_dxd[0]  + sinrot[irec_local]*sh_dzd[0];
             }
@@ -92,6 +92,7 @@ void compute_elastic_seismogram_kernel_omp(int nrec_local,
             }
         }
     }
+    */
 }
 
 void compute_acoustic_seismogram_kernel_omp(int nrec_local,
@@ -104,34 +105,22 @@ void compute_acoustic_seismogram_kernel_omp(int nrec_local,
                                         int NSTEP)
 {
     //__shared__ 
-    realw sh_dxd[NGLL2_PADDED];
+    //realw sh_dxd[NGLL2_PADDED];
 
     for( int irec_local=0; irec_local < nrec_local; irec_local++) {
-        //Should this be one loop over NGLL or 2?
-        for(int tx = 0; tx < NGLLX; tx++) {
+        realw sh_dxd = 0;
+        for(int tx = 0; tx < NGLL2; tx++) {
             int J = (tx/NGLLX);
             int I = (tx-J*NGLLX);
             int ispec = ispec_selected_rec_loc[irec_local]-1;
-            sh_dxd[tx] = 0;
 
-            if (tx < NGLL2) {
-                int iglob = d_ibool[tx+NGLL2_PADDED*ispec]-1;
-                realw hlagrange = hxir[irec_local + nrec_local*I]*hgammar[irec_local + nrec_local*J];
-                sh_dxd[tx] = hlagrange*pressure[iglob];
-            }
-            //__syncthreads();
-            for (int s=1; s<NGLL2_PADDED ; s *= 2) {
-                if (tx % (2*s) == 0) sh_dxd[tx] += sh_dxd[tx + s];
-                //__syncthreads();
-            }
-            // Signe moins car pression = -potential_dot_dot
-            if (tx == 0) {
-                seismograms[irec_local*NSTEP + it ]                   = -sh_dxd[0];
-            }
-            if (tx == 1) {
-                seismograms[irec_local*NSTEP + it + nrec_local*NSTEP] = 0;
-            }
+            int iglob = d_ibool[tx+NGLL2_PADDED*ispec]-1;
+            realw hlagrange = hxir[irec_local + nrec_local*I]*hgammar[irec_local + nrec_local*J];
+            sh_dxd += hlagrange*pressure[iglob];
         }
+            
+        seismograms[irec_local*NSTEP + it ]                   = -sh_dxd;
+        seismograms[irec_local*NSTEP + it + nrec_local*NSTEP] = 0;
     }
 }
 

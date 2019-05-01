@@ -57,16 +57,20 @@ Kernel_2_acoustic_omp_impl( const int nb_blocks_to_compute,
                             realw_const_p d_wxgll,
                             const realw* d_rhostore)
 {
+
+    //was __shared__
+    realw s_dummy_loc[2*NGLL2]{0};
+    realw s_temp1[NGLL2]{0};
+    realw s_temp3[NGLL2]{0};
+    realw sh_hprime_xx[NGLL2]{0};
+    realw sh_hprimewgll_xx[NGLL2]{0};
+    //realw sh_wxgll[NGLLX]{0};//TODO: this looks like it should be NGLL2. Change later if it crashes
+    realw sh_wxgll[NGLL2]{0};
     for(int bx=0; bx< nb_blocks_to_compute; bx++) {
+        //std::cout << "block number: " << bx << std::endl;
         for(int tx=0; tx< NGLL2; tx++) {
-            //was __shared__
-            realw s_dummy_loc[2*NGLL2];
-            realw s_temp1[NGLL2];
-            realw s_temp3[NGLL2];
-            realw sh_hprime_xx[NGLL2];
-            realw sh_hprimewgll_xx[NGLL2];
-            //realw sh_wxgll[NGLLX];//TODO: this looks like it should be NGLL2. Change later if it crashes
-            realw sh_wxgll[NGLL2];
+        //for(int tx=0; tx< NGLLX; tx++) {
+            //std::cout << "thread number: " << tx << std::endl;
             int offset = (d_phase_ispec_inner_acoustic[bx + num_phase_ispec_acoustic*(d_iphase-1)]-1)*NGLL2_PADDED + tx;
             int iglob = d_ibool[offset] - 1;
             // changing iglob indexing to match fortran row changes fast style
@@ -75,14 +79,9 @@ Kernel_2_acoustic_omp_impl( const int nb_blocks_to_compute,
                 s_dummy_loc[NGLL2+tx]=d_b_potential_acoustic[iglob];
             int J = (tx/NGLLX);
             int I = (tx-J*NGLLX);
-            //std::cout << "Offset =  " << offset << std::endl;
-            //std::cout << "d_xix =   " << d_xix << std::endl;
             realw xixl =  d_xix[offset] ;
-            //std::cout << "d_xiz = " << d_xiz << std::endl;
             realw xizl = d_xiz[offset];
-            //std::cout << "d_gammax = " << d_gammax << std::endl;
             realw gammaxl = d_gammax[offset];
-            //std::cout << "d_gammaz = " << d_gammaz << std::endl;
             realw gammazl = d_gammaz[offset];
             realw rho_invl_times_jacobianl = 1.f /(d_rhostore[offset] * (xixl*gammazl-gammaxl*xizl));
 
@@ -141,6 +140,7 @@ Kernel_2_viscoacoustic_omp_impl(const int nb_blocks_to_compute,
                                 const realw* d_B_newmark,
                                 realw_p d_sum_forces_old)
 {
+    std::cout << "This should never be called" << std::endl;
     /*
         // block-id == number of local element id in phase_ispec array
         int bx = blockIdx.y*gridDim.x+blockIdx.x;

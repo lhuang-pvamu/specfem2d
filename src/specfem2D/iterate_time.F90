@@ -137,6 +137,8 @@ subroutine iterate_time()
 
     ! display time step and max of norm of displacement
     if (mod(it,NSTEP_BETWEEN_OUTPUT_INFO) == 0 .or. it == 5 .or. it == NSTEP) then
+      !write(IMAIN,*) 'check_stability, iter ', it
+      !write(IMAIN,*) 'NSTEP_BETWEEN_OUTPUT_INFO = ', NSTEP_BETWEEN_OUTPUT_INFO
       call check_stability()
     endif
 
@@ -153,6 +155,7 @@ subroutine iterate_time()
         if (GPU_MODE) then
           if (any_acoustic) call compute_forces_viscoacoustic_GPU(.false.)
         else if (OMP_MODE) then
+            ! write(IMAIN,*) 'OMP mode called in outer iteration loop '
           if (any_acoustic) call compute_forces_viscoacoustic_OMP(.false.)
         else
           call compute_forces_viscoacoustic_main()
@@ -220,6 +223,7 @@ subroutine iterate_time()
     endif
 
     ! loop on all the receivers to compute and store the seismograms
+    !write(IMAIN,*) 'calling write_seismograms()'
     call write_seismograms()
 
     ! kernels calculation

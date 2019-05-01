@@ -75,7 +75,7 @@ void update_displacement_omp_(long* Mesh_pointer,
 
     int size = NDIM * mp->NGLOB_AB;
 
-    //int blocksize = BLOCKSIZE_KERNEL1;
+    //int blocksize = BLOCKSIZE_KERNEL1; //32
     //int size_padded = ((int)ceil(((double)size)/((double)blocksize)))*blocksize;
     //int num_blocks_x, num_blocks_y;
     //get_blocks_xy(size_padded/blocksize,&num_blocks_x,&num_blocks_y);
@@ -135,7 +135,7 @@ void update_displacement_ac_omp_(long* Mesh_pointer,
 
     int size = mp->NGLOB_AB;
 
-    //int blocksize = BLOCKSIZE_KERNEL1;
+    //int blocksize = BLOCKSIZE_KERNEL1; //32
     //int size_padded = ((int)ceil(((double)size)/((double)blocksize)))*blocksize;
     //int num_blocks_x, num_blocks_y;
     //get_blocks_xy(size_padded/blocksize,&num_blocks_x,&num_blocks_y);
@@ -223,7 +223,7 @@ void kernel_3_a_omp_(long* Mesh_pointer, realw* deltatover2_F, realw* b_deltatov
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); // get Mesh from fortran integer wrapper
     int size = mp->NGLOB_AB;
-    //int blocksize = BLOCKSIZE_KERNEL1;
+    //int blocksize = BLOCKSIZE_KERNEL1; //32
     //int size_padded = ((int)ceil(((double)size)/((double)blocksize)))*blocksize;
     //int num_blocks_x, num_blocks_y;
     //get_blocks_xy(size_padded/blocksize,&num_blocks_x,&num_blocks_y);
@@ -310,7 +310,7 @@ void kernel_3_acoustic_omp_(long* Mesh_pointer,
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); // get Mesh from fortran integer wrapper
     int size = mp->NGLOB_AB;
-    //int blocksize = BLOCKSIZE_KERNEL1;
+    //int blocksize = BLOCKSIZE_KERNEL1; //32
     //int size_padded = ((int)ceil(((double)size)/((double)blocksize)))*blocksize;
     //int num_blocks_x, num_blocks_y;
     //get_blocks_xy(size_padded/blocksize,&num_blocks_x,&num_blocks_y);

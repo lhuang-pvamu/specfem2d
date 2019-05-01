@@ -43,8 +43,8 @@
   character(len=MAX_STRING_LEN) :: outputname
 
   ! safety check
-  if ((GPU_MODE .OR. OMP_MODE) .and. PML_BOUNDARY_CONDITIONS ) call stop_the_code( &
-'Error : PML not implemented on GPU mode. Please use Stacey instead')
+  if ((GPU_MODE ) .and. PML_BOUNDARY_CONDITIONS ) call stop_the_code( 'Error : PML not implemented on GPU mode. Please use Stacey instead')
+  if ((OMP_MODE ) .and. PML_BOUNDARY_CONDITIONS ) call stop_the_code( 'Error : PML not implemented on OMP mode. Please use Stacey instead')
 
   ! PML absorbing conditions
   ! sets global flag for all slices

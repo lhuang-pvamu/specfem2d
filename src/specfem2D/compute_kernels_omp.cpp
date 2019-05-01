@@ -288,8 +288,8 @@ void compute_kernels_acoustic_kernel_omp(int* ispec_is_acoustic,
 
     // shared memory between all threads within this block
     //__shared__ 
-    realw scalar_field_displ[NGLL2];
-    realw scalar_field_accel[NGLL2];
+    realw scalar_field_displ[NGLL2]{0};
+    realw scalar_field_accel[NGLL2]{0};
 
 
     // handles case when there is 1 extra block (due to rectangular grid)
@@ -414,8 +414,8 @@ void compute_kernels_hess_ac_omp_kernel(int* ispec_is_acoustic,
 
     // shared memory between all threads within this block
     //__shared__ 
-    realw scalar_field_accel[NGLL2];
-    realw scalar_field_b_accel[NGLL2];
+    realw scalar_field_accel[NGLL2]{0};
+    realw scalar_field_b_accel[NGLL2]{0};
 
     int active = 0;
 
