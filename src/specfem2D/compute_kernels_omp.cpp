@@ -280,39 +280,27 @@ void compute_kernels_acoustic_kernel_omp(int* ispec_is_acoustic,
                                      int NSPEC_AB,
                                      realw deltat) 
 {
-
-    //int ispec = blockIdx.x + blockIdx.y*gridDim.x;
-    //int ij = threadIdx.x;
-
-    // local and global indices
-
-    // shared memory between all threads within this block
-    //__shared__ 
-    realw scalar_field_displ[NGLL2]{0};
-    realw scalar_field_accel[NGLL2]{0};
-
-
     // handles case when there is 1 extra block (due to rectangular grid)
     for(int ispec = 0; ispec < NSPEC_AB; ispec++) {
+        //__shared__ 
+        realw scalar_field_displ[NGLL2]{0};
+        realw scalar_field_accel[NGLL2]{0};
         for(int ij = 0; ij < NGLL2; ij++) {
-            int ij_ispec = ij + NGLL2*ispec;
             int ij_ispec_padded = ij + NGLL2_PADDED*ispec;
-            int active = 0;
-            int iglob;
+            int iglob = d_ibool[ij_ispec_padded] - 1;
             // acoustic elements only
             if (ispec_is_acoustic[ispec]) {
-                active = 1;
-
-                // copy field values
-                iglob = d_ibool[ij_ispec_padded] - 1;
                 scalar_field_displ[ij] = b_potential_acoustic[iglob];
                 scalar_field_accel[ij] = potential_dot_dot_acoustic[iglob];
             }
+        }
+        //__syncthreads();
+        for(int ij = 0; ij < NGLL2; ij++) {
+            int ij_ispec = ij + NGLL2*ispec;
+            int ij_ispec_padded = ij + NGLL2_PADDED*ispec;
+            int iglob = d_ibool[ij_ispec_padded] - 1;
 
-            // synchronizes threads
-            //__syncthreads();
-
-            if (active) {
+            if (ispec_is_acoustic[ispec]) {
                 realw accel_elm[2];
                 realw b_displ_elm[2];
                 realw rhol,kappal;
@@ -339,7 +327,7 @@ void compute_kernels_acoustic_kernel_omp(int* ispec_is_acoustic,
                 kappal = kappastore[ij_ispec];
                 kappa_ac_kl[ij_ispec] += potential_dot_dot_acoustic[iglob] * b_potential_acoustic[iglob] * deltat / kappal ;
 
-            } // active
+            }
         }
     }
 }
@@ -408,35 +396,24 @@ void compute_kernels_hess_ac_omp_kernel(int* ispec_is_acoustic,
                                         realw* hess_kl,
                                         int NSPEC_AB) 
 {
-
-    //int ispec = blockIdx.x + blockIdx.y*gridDim.x;
-    //int ij = threadIdx.x;
-
-    // shared memory between all threads within this block
-    //__shared__ 
-    realw scalar_field_accel[NGLL2]{0};
-    realw scalar_field_b_accel[NGLL2]{0};
-
-    int active = 0;
-
     // handles case when there is 1 extra block (due to rectangular grid)
     for(int ispec=0; ispec < NSPEC_AB; ispec++) {
+        //__shared__ 
+        realw scalar_field_accel[NGLL2]{0};
+        realw scalar_field_b_accel[NGLL2]{0};
         for(int ij=0; ij < NGLL2; ij++) {
             int ij_ispec_padded = ij + NGLL2_PADDED*ispec;
-            int iglob;
+            int iglob = d_ibool[ij_ispec_padded] - 1;
             // acoustic elements only
             if (ispec_is_acoustic[ispec]) {
-                active = 1;
-
-                // global indices
-                iglob = d_ibool[ij_ispec_padded] - 1;
-
-                // copy field values
                 scalar_field_accel[ij] = potential_dot_dot_acoustic[iglob];
                 scalar_field_b_accel[ij] = b_potential_dot_dot_acoustic[iglob];
             }
-            //__syncthreads();
-            if (active) {
+        }
+        //__syncthreads();
+        for(int ij=0; ij < NGLL2; ij++) {
+            int ij_ispec_padded = ij + NGLL2_PADDED*ispec;
+            if (ispec_is_acoustic[ispec]) {
                 realw accel_elm[2];
                 realw b_accel_elm[2];
                 realw rhol;
@@ -460,7 +437,7 @@ void compute_kernels_hess_ac_omp_kernel(int* ispec_is_acoustic,
                 // approximates hessian
                 hess_kl[ij + NGLL2*ispec] +=  (accel_elm[0]*b_accel_elm[0] +
                         accel_elm[1]*b_accel_elm[1]);
-            } // active
+            } 
         }
     }
 }

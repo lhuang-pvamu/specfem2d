@@ -71,11 +71,6 @@ Kernel_2_acoustic_omp_impl( const int nb_blocks_to_compute,
         }
         for(int tx=0; tx< NGLL2; tx++) {
             int offset = (d_phase_ispec_inner_acoustic[bx + num_phase_ispec_acoustic*(d_iphase-1)]-1)*NGLL2_PADDED + tx;
-            //int iglob = d_ibool[offset] - 1;
-            // changing iglob indexing to match fortran row changes fast style
-            //s_dummy_loc[0][tx] = d_potential_acoustic[iglob];
-            //if (nb_field==2)
-            //    s_dummy_loc[1][tx]=d_b_potential_acoustic[iglob];
             int J = (tx/NGLLX);
             int I = (tx-J*NGLLX);
             realw xixl =  d_xix[offset] ;
