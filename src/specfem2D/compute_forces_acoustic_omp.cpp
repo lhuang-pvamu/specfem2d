@@ -57,64 +57,59 @@ Kernel_2_acoustic_omp_impl( const int nb_blocks_to_compute,
                             realw_const_p d_wxgll,
                             const realw* d_rhostore)
 {
-
-    //was __shared__
-    realw s_dummy_loc[2*NGLL2]{0};
-    realw s_temp1[NGLL2]{0};
-    realw s_temp3[NGLL2]{0};
-    realw sh_hprime_xx[NGLL2]{0};
-    realw sh_hprimewgll_xx[NGLL2]{0};
-    //realw sh_wxgll[NGLLX]{0};//TODO: this looks like it should be NGLL2. Change later if it crashes
-    realw sh_wxgll[NGLL2]{0};
-    for(int bx=0; bx< nb_blocks_to_compute; bx++) {
-        //std::cout << "block number: " << bx << std::endl;
+    for(int bx=0; bx < nb_blocks_to_compute; bx++) {
+        //was __shared__
+        realw s_dummy_loc[2][NGLL2]{0};
+        realw s_temp1[NGLL2]{0};
+        realw s_temp3[NGLL2]{0};
         for(int tx=0; tx< NGLL2; tx++) {
-        //for(int tx=0; tx< NGLLX; tx++) {
-            //std::cout << "thread number: " << tx << std::endl;
             int offset = (d_phase_ispec_inner_acoustic[bx + num_phase_ispec_acoustic*(d_iphase-1)]-1)*NGLL2_PADDED + tx;
             int iglob = d_ibool[offset] - 1;
-            // changing iglob indexing to match fortran row changes fast style
-            s_dummy_loc[tx] = d_potential_acoustic[iglob];
+            s_dummy_loc[0][tx] = d_potential_acoustic[iglob];
             if (nb_field==2)
-                s_dummy_loc[NGLL2+tx]=d_b_potential_acoustic[iglob];
+                s_dummy_loc[1][tx]=d_b_potential_acoustic[iglob];
+        }
+        for(int tx=0; tx< NGLL2; tx++) {
+            int offset = (d_phase_ispec_inner_acoustic[bx + num_phase_ispec_acoustic*(d_iphase-1)]-1)*NGLL2_PADDED + tx;
+            //int iglob = d_ibool[offset] - 1;
+            // changing iglob indexing to match fortran row changes fast style
+            //s_dummy_loc[0][tx] = d_potential_acoustic[iglob];
+            //if (nb_field==2)
+            //    s_dummy_loc[1][tx]=d_b_potential_acoustic[iglob];
             int J = (tx/NGLLX);
             int I = (tx-J*NGLLX);
             realw xixl =  d_xix[offset] ;
             realw xizl = d_xiz[offset];
             realw gammaxl = d_gammax[offset];
             realw gammazl = d_gammaz[offset];
-            realw rho_invl_times_jacobianl = 1.f /(d_rhostore[offset] * (xixl*gammazl-gammaxl*xizl));
-
-            //crashing here?
-            //std::cout << "tx = " << tx << std::endl;
-            //std::cout << "d_hprime_xx = " << d_hprime_xx << std::endl;
-            sh_hprime_xx[tx] = d_hprime_xx[tx];
-            //std::cout << "d_hprimewgll_xx = " << d_hprimewgll_xx << std::endl;
-            sh_hprimewgll_xx[tx] = d_hprimewgll_xx[tx];
-            //std::cout << "d_wxgll = " << d_wxgll << std::endl;
-            sh_wxgll[tx] = d_wxgll[tx];
+            realw rho_invl_times_jacobianl = 1.0 /(d_rhostore[offset] * (xixl*gammazl-gammaxl*xizl));
             for (int k=0 ; k < nb_field ; k++) {
                 //__syncthreads();
-                realw temp1l = 0.f;
-                realw temp3l = 0.f;
+                realw row_sum= 0;
+                realw col_sum= 0;
                 for (int l=0; l<NGLLX; l++) {
-                    temp1l += s_dummy_loc[NGLL2*k+J*NGLLX+l] * sh_hprime_xx[l*NGLLX+I];
-                    temp3l += s_dummy_loc[NGLL2*k+l*NGLLX+I] * sh_hprime_xx[l*NGLLX+J];
+                    row_sum += s_dummy_loc[k][J*NGLLX+l] * d_hprime_xx[l*NGLLX+I];
+                    col_sum += s_dummy_loc[k][l*NGLLX+I] * d_hprime_xx[l*NGLLX+J];
                 }
-                realw dpotentialdxl = xixl*temp1l + gammaxl*temp3l;
-                realw dpotentialdzl = xizl*temp1l + gammazl*temp3l;
-                s_temp1[tx] = sh_wxgll[J]*rho_invl_times_jacobianl * (dpotentialdxl*xixl    + dpotentialdzl*xizl)  ;
-                s_temp3[tx] = sh_wxgll[I]*rho_invl_times_jacobianl * (dpotentialdxl*gammaxl + dpotentialdzl*gammazl)  ;
-                //__syncthreads();
-                realw sum_terms = 0.f;
-                for (int l=0; l<NGLLX; l++) {
-                    sum_terms -= s_temp1[J*NGLLX+l] * sh_hprimewgll_xx[I*NGLLX+l] + s_temp3[l*NGLLX+I] * sh_hprimewgll_xx[J*NGLLX+l];
-                }
-                if (k==0) {
-                    d_potential_dot_dot_acoustic[iglob] += sum_terms;
-                } else {
-                    d_b_potential_dot_dot_acoustic[iglob] += sum_terms;
-                }
+                realw dpotentialdxl = xixl*row_sum + gammaxl*col_sum;
+                realw dpotentialdzl = xizl*row_sum + gammazl*col_sum;
+                s_temp1[tx] = d_wxgll[J]*rho_invl_times_jacobianl * (dpotentialdxl*xixl    + dpotentialdzl*xizl)  ;
+                s_temp3[tx] = d_wxgll[I]*rho_invl_times_jacobianl * (dpotentialdxl*gammaxl + dpotentialdzl*gammazl)  ;
+            }
+        }
+        //__syncthreads();
+        for(int tx=0; tx< NGLL2; tx++) {
+            int offset = (d_phase_ispec_inner_acoustic[bx + num_phase_ispec_acoustic*(d_iphase-1)]-1)*NGLL2_PADDED + tx;
+            int iglob = d_ibool[offset] - 1;
+            int J = (tx/NGLLX);
+            int I = (tx-J*NGLLX);
+            realw sum_terms = 0;
+            for (int l=0; l<NGLLX; l++) {
+                sum_terms -= s_temp1[J*NGLLX+l] * d_hprimewgll_xx[I*NGLLX+l] + s_temp3[l*NGLLX+I] * d_hprimewgll_xx[J*NGLLX+l];
+            }
+            d_potential_dot_dot_acoustic[iglob] += sum_terms;//atomicAdd
+            if( nb_field == 2 ){
+                d_b_potential_dot_dot_acoustic[iglob] += sum_terms;//atomicAdd
             }
         }
     }
