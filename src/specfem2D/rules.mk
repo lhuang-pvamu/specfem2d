@@ -263,6 +263,8 @@ omp_specfem2D_OBJECTS = \
 	$O/transfer_fields_omp.cpp.o \
 	$O/update_displacement_omp.cpp.o \
 	$O/write_seismograms_omp.cpp.o \
+	$O/assemble_MPI_scalar_omp.cpp.o \
+	$O/assemble_MPI_vector_omp.cpp.o \
 	$(EMPTY_MACRO)
 
 ###

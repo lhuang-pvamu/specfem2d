@@ -109,7 +109,6 @@ subroutine compute_forces_viscoacoustic_OMP(compute_b_wavefield_arg)
                     ! 1 == fwd accel
                     call transfer_boun_pot_from_device(Mesh_pointer, buffer_send_scalar_gpu, 1)
 
-                    !TODO: add these openMP versions
                     call assemble_MPI_scalar_send_omp(NPROC, &
                                                       buffer_send_scalar_gpu,buffer_recv_scalar_gpu, &
                                                       ninterface,max_nibool_interfaces_ext_mesh, &
