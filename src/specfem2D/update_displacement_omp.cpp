@@ -45,12 +45,6 @@ void UpdateDispVeloc_omp_kernel(realw* displ,
                                 realw deltatsqover2,
                                 realw deltatover2)
 {
-    // two dimensional array of blocks on grid where each block has one dimensional array of threads
-    //int id = threadIdx.x + blockIdx.x*blockDim.x + blockIdx.y*gridDim.x*blockDim.x;
-
-    // because of block and grid sizing problems, there is a small
-    // amount of buffer at the end of the calculation
-    //if (id < size) {
     for(int id=0; id < size; id++) {
         displ[id] = displ[id] + deltat*veloc[id] + deltatsqover2*accel[id];
         veloc[id] = veloc[id] + deltatover2*accel[id];
@@ -68,31 +62,12 @@ void update_displacement_omp_(long* Mesh_pointer,
                               realw* b_deltatover2_F)
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); // get Mesh from fortran integer wrapper
-
-    //realw deltat = *deltat_F;
-    //realw deltatsqover2 = *deltatsqover2_F;
-    //realw deltatover2 = *deltatover2_F;
-
     int size = NDIM * mp->NGLOB_AB;
 
-    //int blocksize = BLOCKSIZE_KERNEL1; //32
-    //int size_padded = ((int)ceil(((double)size)/((double)blocksize)))*blocksize;
-    //int num_blocks_x, num_blocks_y;
-    //get_blocks_xy(size_padded/blocksize,&num_blocks_x,&num_blocks_y);
-    //dim3 grid(num_blocks_x,num_blocks_y);
-    //dim3 threads(blocksize,1,1);
-
-    //launch kernel
-    //<<<grid,threads,0,mp->compute_stream>>>
     UpdateDispVeloc_omp_kernel(mp->d_displ,mp->d_veloc,mp->d_accel,size,*deltat_F, *deltatsqover2_F, *deltatover2_F);
 
     // kernel for backward fields
     if (mp->simulation_type == 3) {
-        //realw b_deltat = *b_deltat_F;
-        //realw b_deltatsqover2 = *b_deltatsqover2_F;
-        //realw b_deltatover2 = *b_deltatover2_F;
-
-        //<<<grid,threads,0,mp->compute_stream>>>
         UpdateDispVeloc_omp_kernel(mp->d_b_displ,mp->d_b_veloc,mp->d_b_accel,size, *b_deltat_F, *b_deltatsqover2_F, *b_deltatover2_F);
     }
 }
@@ -107,11 +82,6 @@ void UpdatePotential_omp_kernel(realw_p potential_acoustic,
                                        realw deltatsqover2,
                                        realw deltatover2) {
 
-    //int id = threadIdx.x + blockIdx.x*blockDim.x + blockIdx.y*gridDim.x*blockDim.x;
-
-    // because of block and grid sizing problems, there is a small
-    // amount of buffer at the end of the calculation
-    //if (id < size) {
     for(int id=0; id < size; id++) {
         realw p_dot_dot = potential_dot_dot_acoustic[id];
         potential_acoustic[id] += deltat*potential_dot_acoustic[id] + deltatsqover2*p_dot_dot;
@@ -134,22 +104,12 @@ void update_displacement_ac_omp_(long* Mesh_pointer,
     Mesh* mp = (Mesh*)(*Mesh_pointer); // get Mesh from fortran integer wrapper
 
     int size = mp->NGLOB_AB;
-
-    //int blocksize = BLOCKSIZE_KERNEL1; //32
-    //int size_padded = ((int)ceil(((double)size)/((double)blocksize)))*blocksize;
-    //int num_blocks_x, num_blocks_y;
-    //get_blocks_xy(size_padded/blocksize,&num_blocks_x,&num_blocks_y);
-    //dim3 grid(num_blocks_x,num_blocks_y);
-    //dim3 threads(blocksize,1,1);
-
-    //launch kernel
     // forward wavefields
     realw deltat = *deltat_F;
     realw deltatsqover2 = *deltatsqover2_F;
     realw deltatover2 = *deltatover2_F;
 
     if(!(*UNDO_ATTENUATION_AND_OR_PML && *compute_b_wavefield)) {
-        //<<<grid,threads,0,mp->compute_stream>>>
         UpdatePotential_omp_kernel(mp->d_potential_acoustic,
                                mp->d_potential_dot_acoustic,
                                mp->d_potential_dot_dot_acoustic,
@@ -160,7 +120,6 @@ void update_displacement_ac_omp_(long* Mesh_pointer,
         realw b_deltat = *b_deltat_F;
         realw b_deltatsqover2 = *b_deltatsqover2_F;
         realw b_deltatover2 = *b_deltatover2_F;
-        //<<<grid,threads,0,mp->compute_stream>>>
         UpdatePotential_omp_kernel(mp->d_b_potential_acoustic,
                                mp->d_b_potential_dot_acoustic,
                                mp->d_b_potential_dot_dot_acoustic,
@@ -194,8 +153,6 @@ void kernel_3_accel_omp_device( realw* accel,
                                 realw* rmassy,
                                 realw* rmassz)
 {
-    //int id = threadIdx.x + blockIdx.x*blockDim.x + blockIdx.y*gridDim.x*blockDim.x;
-    //if (id < size) {
     for(int id=0; id < size; id++) {
         accel[2*id] = accel[2*id]*rmassx[id];
         accel[2*id+1] = accel[2*id+1]*rmassz[id];
@@ -207,11 +164,6 @@ void kernel_3_veloc_omp_device( realw* veloc,
                                 int size, 
                                 realw deltatover2)
 {
-    //int id = threadIdx.x + blockIdx.x*blockDim.x + blockIdx.y*gridDim.x*blockDim.x;
-
-    // because of block and grid sizing problems, there is a small
-    // amount of buffer at the end of the calculation
-    //if (id < size) {
     for(int id=0; id < size; id++) {
         veloc[2*id] = veloc[2*id] + deltatover2*accel[2*id];
         veloc[2*id+1] = veloc[2*id+1] + deltatover2*accel[2*id+1];
@@ -223,21 +175,10 @@ void kernel_3_a_omp_(long* Mesh_pointer, realw* deltatover2_F, realw* b_deltatov
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); // get Mesh from fortran integer wrapper
     int size = mp->NGLOB_AB;
-    //int blocksize = BLOCKSIZE_KERNEL1; //32
-    //int size_padded = ((int)ceil(((double)size)/((double)blocksize)))*blocksize;
-    //int num_blocks_x, num_blocks_y;
-    //get_blocks_xy(size_padded/blocksize,&num_blocks_x,&num_blocks_y);
-    //dim3 grid(num_blocks_x,num_blocks_y);
-    //dim3 threads(blocksize,1,1);
-
     realw deltatover2 = *deltatover2_F;
-
-    // updates both, accel and veloc
-    //<<< grid, threads,0,mp->compute_stream>>>
     kernel_3_omp_device(mp->d_veloc, mp->d_accel, size, deltatover2, mp->d_rmassx,mp->d_rmassz);
     if (mp->simulation_type == 3) {
         realw b_deltatover2 = *b_deltatover2_F;
-        //<<< grid, threads,0,mp->compute_stream>>>
         kernel_3_omp_device(mp->d_b_veloc, mp->d_b_accel, size, b_deltatover2, mp->d_rmassx,mp->d_rmassz);
     }
 }
@@ -249,20 +190,8 @@ void kernel_3_b_omp_(long* Mesh_pointer,
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); // get Mesh from fortran integer wrapper
     int size = mp->NGLOB_AB;
-    //int blocksize = BLOCKSIZE_KERNEL3;
-    //int size_padded = ((int)ceil(((double)size)/((double)blocksize)))*blocksize;
-    //int num_blocks_x, num_blocks_y;
-    //get_blocks_xy(size_padded/blocksize,&num_blocks_x,&num_blocks_y);
-    //dim3 grid(num_blocks_x,num_blocks_y);
-    //dim3 threads(blocksize,1,1);
-
-    //realw deltatover2 = *deltatover2_F;
-    // updates only veloc at this point
-    //<<< grid, threads,0,mp->compute_stream>>>
     kernel_3_veloc_omp_device(mp->d_veloc, mp->d_accel, size, *deltatover2_F);
     if (mp->simulation_type == 3) {
-        //realw b_deltatover2 = *b_deltatover2_F;
-        //<<< grid, threads,0,mp->compute_stream>>>
         kernel_3_veloc_omp_device(mp->d_b_veloc, mp->d_b_accel, size, *b_deltatover2_F);
     }
 }
@@ -280,11 +209,6 @@ void kernel_3_acoustic_omp_device(realw* potential_dot_dot_acoustic,
                                    realw b_deltatover2,
                                    realw* rmass_acoustic)
 {
-    //int id = threadIdx.x + blockIdx.x*blockDim.x + blockIdx.y*gridDim.x*blockDim.x;
-    //realw p_dot_dot;
-    // because of block and grid sizing problems, there is a small
-    // amount of buffer at the end of the calculation
-    //if (id < size) {
     for(int id=0; id < size; id++) {
         realw rmass = rmass_acoustic[id];
         if (compute_wavefield_1) {
@@ -310,13 +234,6 @@ void kernel_3_acoustic_omp_(long* Mesh_pointer,
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); // get Mesh from fortran integer wrapper
     int size = mp->NGLOB_AB;
-    //int blocksize = BLOCKSIZE_KERNEL1; //32
-    //int size_padded = ((int)ceil(((double)size)/((double)blocksize)))*blocksize;
-    //int num_blocks_x, num_blocks_y;
-    //get_blocks_xy(size_padded/blocksize,&num_blocks_x,&num_blocks_y);
-    //dim3 grid(num_blocks_x,num_blocks_y);
-    //dim3 threads(blocksize,1,1);
-    //<<< grid, threads,0,mp->compute_stream>>>
     kernel_3_acoustic_omp_device(mp->d_potential_dot_dot_acoustic,
                                  mp->d_b_potential_dot_dot_acoustic,
                                  mp->d_potential_dot_acoustic,

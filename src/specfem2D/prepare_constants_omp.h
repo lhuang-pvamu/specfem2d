@@ -8,17 +8,20 @@ realw omp_wxgll[NGLLX];
 
 void setConst_wxgll_omp(realw* array, Mesh* mp)
 {
-    mp->d_wxgll = &omp_wxgll[0];
+    //mp->d_wxgll = &omp_wxgll[0];
+    mp->d_wxgll = array;
 
 }
 
 void setConst_hprime_xx_omp(realw* array, Mesh* mp)
 {
-    mp->d_hprime_xx = &omp_hprime_xx[0];
+    //mp->d_hprime_xx = &omp_hprime_xx[0];
+    mp->d_hprime_xx = array;
 }
 
 void setConst_hprimewgll_xx_omp(realw* array,Mesh* mp)
 {
-    mp->d_hprimewgll_xx = &omp_hprimewgll_xx[0];
+    //mp->d_hprimewgll_xx = &omp_hprimewgll_xx[0];
+    mp->d_hprimewgll_xx = array;
 }
 

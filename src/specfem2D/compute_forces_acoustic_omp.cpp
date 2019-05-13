@@ -58,17 +58,19 @@ Kernel_2_acoustic_omp_impl( const int nb_blocks_to_compute,
                             const realw* d_rhostore)
 {
     for(int bx=0; bx < nb_blocks_to_compute; bx++) {
-        //was __shared__
         realw s_dummy_loc[2][NGLL2]{0};
-        realw s_temp1[NGLL2]{0};
-        realw s_temp3[NGLL2]{0};
         for(int tx=0; tx< NGLL2; tx++) {
             int offset = (d_phase_ispec_inner_acoustic[bx + num_phase_ispec_acoustic*(d_iphase-1)]-1)*NGLL2_PADDED + tx;
             int iglob = d_ibool[offset] - 1;
             s_dummy_loc[0][tx] = d_potential_acoustic[iglob];
-            if (nb_field==2)
+            if (nb_field==2) {
                 s_dummy_loc[1][tx]=d_b_potential_acoustic[iglob];
+            }
         }
+
+        //__syncthreads();
+        realw s_temp1[NGLL2]{0};
+        realw s_temp3[NGLL2]{0};
         for(int tx=0; tx< NGLL2; tx++) {
             int offset = (d_phase_ispec_inner_acoustic[bx + num_phase_ispec_acoustic*(d_iphase-1)]-1)*NGLL2_PADDED + tx;
             int J = (tx/NGLLX);
@@ -79,7 +81,6 @@ Kernel_2_acoustic_omp_impl( const int nb_blocks_to_compute,
             realw gammazl = d_gammaz[offset];
             realw rho_invl_times_jacobianl = 1.0 /(d_rhostore[offset] * (xixl*gammazl-gammaxl*xizl));
             for (int k=0 ; k < nb_field ; k++) {
-                //__syncthreads();
                 realw row_sum= 0;
                 realw col_sum= 0;
                 for (int l=0; l<NGLLX; l++) {
@@ -106,6 +107,9 @@ Kernel_2_acoustic_omp_impl( const int nb_blocks_to_compute,
             if( nb_field == 2 ){
                 d_b_potential_dot_dot_acoustic[iglob] += sum_terms;//atomicAdd
             }
+            //if( d_potential_dot_dot_acoustic[iglob] ~= 0) {
+            //    std::cout << "d_potential_dot_dot_acoustic[" << iglob << "] = " << d_potential_dot_dot_acoustic[iglob] << std::endl;
+            //}
         }
     }
 }
