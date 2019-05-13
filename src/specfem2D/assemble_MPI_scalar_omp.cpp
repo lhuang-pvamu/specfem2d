@@ -47,13 +47,8 @@ void prepare_boundary_potential_on_omp_device(realw* d_potential_dot_dot_acousti
                                                      const int* d_ibool_interfaces_ext_mesh,
                                                      const int* inum_inter_acoustic) 
 {
-    //int id = threadIdx.x + blockIdx.x*blockDim.x + blockIdx.y*gridDim.x*blockDim.x;
-    //int ientry,iglob,num_int;
-
     for(int iinterface=0; iinterface < ninterface_ac; iinterface++) {
         int num_int=inum_inter_acoustic[iinterface]-1;
-
-        //if (id<d_nibool_interfaces_ext_mesh[num_int]) {
         for (int id=0; id<d_nibool_interfaces_ext_mesh[num_int]; id++) {
             // entry in interface array
             int ientry = id + max_nibool_interfaces_ext_mesh*num_int;
@@ -73,17 +68,8 @@ void transfer_boun_pot_from_omp_device(long* Mesh_pointer,
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
 
-    // checks if anything to do
     if (mp->size_mpi_buffer_potential > 0) {
-        //int blocksize = BLOCKSIZE_TRANSFER;
-        //int size_padded = ((int)ceil(((double)(mp->max_nibool_interfaces_ext_mesh))/((double)blocksize)))*blocksize;
-        //int num_blocks_x, num_blocks_y;
-        //get_blocks_xy(size_padded/blocksize,&num_blocks_x,&num_blocks_y);
-        //dim3 grid(num_blocks_x,num_blocks_y);
-        //dim3 threads(blocksize,1,1);
-
         if (*FORWARD_OR_ADJOINT == 1) {
-            //<<<grid,threads,0,mp->compute_stream>>>
             prepare_boundary_potential_on_omp_device(mp->d_potential_dot_dot_acoustic,
                                                  mp->d_send_potential_dot_dot_buffer,
                                                  mp->ninterface_acoustic,
@@ -94,10 +80,7 @@ void transfer_boun_pot_from_omp_device(long* Mesh_pointer,
 
             std::memcpy(send_potential_dot_dot_buffer,mp->d_send_potential_dot_dot_buffer,
                         mp->size_mpi_buffer_potential*sizeof(realw));
-        }
-        else if (*FORWARD_OR_ADJOINT == 3) {
-            // backward/reconstructed wavefield buffer
-            //<<<grid,threads,0,mp->compute_stream>>>
+        } else if (*FORWARD_OR_ADJOINT == 3) {
             prepare_boundary_potential_on_omp_device(mp->d_b_potential_dot_dot_acoustic,
                                                  mp->d_b_send_potential_dot_dot_buffer,
                                                  mp->ninterface_acoustic,
@@ -120,14 +103,11 @@ void assemble_boundary_potential_on_omp_device(realw* d_potential_dot_dot_acoust
                                                const int* d_ibool_interfaces_ext_mesh,
                                                const int* inum_inter_acoustic) 
 {
-    //int id = threadIdx.x + blockIdx.x*blockDim.x + blockIdx.y*gridDim.x*blockDim.x;
     for( int iinterface=0; iinterface < ninterface_ac; iinterface++) {
         int num_int=inum_inter_acoustic[iinterface]-1;
-        //if (id<d_nibool_interfaces_ext_mesh[num_int]) {
         for (int id = 0; id<d_nibool_interfaces_ext_mesh[num_int];id++) {
             int ientry = id + max_nibool_interfaces_ext_mesh*num_int;
             int iglob = d_ibool_interfaces_ext_mesh[ientry] - 1;
-
             //atomicAdd
             d_potential_dot_dot_acoustic[iglob] += d_send_potential_dot_dot_buffer[ientry];
         }
@@ -142,22 +122,13 @@ void transfer_asmbl_pot_to_omp_device(long* Mesh_pointer,
 {
     Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
     if (mp->size_mpi_buffer_potential > 0) {
-        //int blocksize = BLOCKSIZE_TRANSFER;
-        //int size_padded = ((int)ceil(((double)mp->max_nibool_interfaces_ext_mesh)/((double)blocksize)))*blocksize;
-        //int num_blocks_x, num_blocks_y;
-        //get_blocks_xy(size_padded/blocksize,&num_blocks_x,&num_blocks_y);
-        //dim3 grid(num_blocks_x,num_blocks_y);
-        //dim3 threads(blocksize,1,1);
-
         //synchronize_cuda();
 
         if (*FORWARD_OR_ADJOINT == 1) {
             // copies buffer onto GPU
-            memcpy(mp->d_send_potential_dot_dot_buffer, buffer_recv_scalar_gpu,
+            std::memcpy(mp->d_send_potential_dot_dot_buffer, buffer_recv_scalar_gpu,
                         mp->size_mpi_buffer_potential*sizeof(realw));
-
             //assemble forward field
-            //<<<grid,threads,0,mp->compute_stream>>>
             assemble_boundary_potential_on_omp_device(mp->d_potential_dot_dot_acoustic,
                                                   mp->d_send_potential_dot_dot_buffer,
                                                   mp->ninterface_acoustic,
@@ -165,16 +136,10 @@ void transfer_asmbl_pot_to_omp_device(long* Mesh_pointer,
                                                   mp->d_nibool_interfaces_ext_mesh,
                                                   mp->d_ibool_interfaces_ext_mesh,
                                                   mp->d_inum_interfaces_acoustic);
-
-
-        }
-        else if (*FORWARD_OR_ADJOINT == 3) {
-            // copies buffer onto GPU
+        } else if (*FORWARD_OR_ADJOINT == 3) {
             std::memcpy(mp->d_b_send_potential_dot_dot_buffer, buffer_recv_scalar_gpu,
                         mp->size_mpi_buffer_potential*sizeof(realw));
-
             //assemble reconstructed/backward field
-            //<<<grid,threads,0,mp->compute_stream>>>
             assemble_boundary_potential_on_omp_device(mp->d_b_potential_dot_dot_acoustic,
                                                   mp->d_b_send_potential_dot_dot_buffer,
                                                   mp->ninterface_acoustic,
