@@ -529,7 +529,7 @@
   double precision :: distance_min_local,distance_max_local
   double precision :: distance_1,distance_2,distance_3,distance_4
 
-  integer :: i,j,ispec,material
+  integer :: i,j,ispec,material, ier
 
 ! for histogram of number of points per wavelength
   double precision :: min_nb_of_points_per_wavelength,max_nb_of_points_per_wavelength,nb_of_points_per_wavelength, &
@@ -541,12 +541,18 @@
   integer :: iclass,nspec_all,ipass,nspec_counted,nspec_counted_all,nspec_counted_all_solid,nspec_counted_all_fluid
   double precision :: current_percent,total_percent
 
+! for output files of Sampling Density (points per wavelength)
+  integer, parameter :: SCRATCH = 172  ! Temporary file unit
+  character(len=MAX_STRING_LEN) :: outputname
+  real, allocatable, dimension(:,:,:):: sampdens
+  allocate (sampdens(NGLLX,NGLLZ,nspec))
 
   nspec_counted_all_solid = 0
   nspec_counted_all_fluid = 0
 
   ! first pass is for S wave sampling in solid, second pass is for P wave sampling in fluid
   do ipass = 1,2
+    sampdens = 0.
 
     nspec_counted = 0
 
@@ -555,11 +561,15 @@
       max_nb_of_points_per_wavelength = lambdaSmax_histo
       ! do not create this histogram if the model is entirely fluid
       if (.not. ELASTIC_SIMULATION .and. .not. POROELASTIC_SIMULATION) cycle
-    else
+      write(outputname,'(a,i6.6,a)') trim(OUTPUT_FILES)//'proc',myrank,'_SDs.bin'
+
+   else
       ! do not create this histogram if the model is entirely solid
       if (.not. any_fluid_histo_glob) cycle
       min_nb_of_points_per_wavelength = lambdaPmin_in_fluid_histo
       max_nb_of_points_per_wavelength = lambdaPmax_in_fluid_histo
+      write(outputname,'(a,i6.6,a)') trim(OUTPUT_FILES)//'proc',myrank,'_SDp.bin'
+
     endif
 
     ! when the grid is regular and the medium is homogeneous, the minimum and the maximum are equal
@@ -658,9 +668,12 @@
           if (iclass > NCLASSES-1) iclass = NCLASSES-1
           classes_wavelength(iclass) = classes_wavelength(iclass) + 1
 
+          ! store as S-wave Sampling Density for each point in GLL binary file
+          sampdens(:,:,ispec) = nb_of_points_per_wavelength
+
         endif
 
-      else
+      else ! ipass==2
         ! in second pass, only fluid regions, thus ignore solid regions with Vs > 0
         if (abs(vsmin_local) < TINYVAL) then
           if (vpIImin_local <= ZERO) then
@@ -679,11 +692,15 @@
           if (iclass < 0) iclass = 0
           if (iclass > NCLASSES-1) iclass = NCLASSES-1
           classes_wavelength(iclass) = classes_wavelength(iclass) + 1
+
+          ! store as P-wave Sampling Density for each point in GLL binary file
+          sampdens(:,:,ispec) = nb_of_points_per_wavelength
+
         endif
 
       endif
 
-    enddo
+    enddo ! nspec
 
 #ifdef USE_MPI
     call sum_all_1Darray_i(classes_wavelength, classes_wavelength_all, NCLASSES)
@@ -754,6 +771,12 @@
       endif
 
     endif ! of if myrank == 0
+
+    ! Write the sampling density grid
+    open(unit=SCRATCH,file=outputname,status='unknown',form='unformatted',iostat=ier)
+    if (ier /= 0) call exit_MPI(myrank,'Error opening sampling density file: '//outputname)
+    write(SCRATCH) sampdens
+    close(SCRATCH)
 
   enddo ! end of the two passes on S wavelength data and P wavelength data
 
@@ -2244,3 +2267,4 @@
  681 format(f6.2,1x,f6.2)
 
   end subroutine check_grid_create_postscript
+
