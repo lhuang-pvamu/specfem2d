@@ -501,7 +501,7 @@
   use mpi
 #endif
 
-  use constants, only: IMAIN,HUGEVAL,TINYVAL,ZERO,OUTPUT_FILES
+  use constants, only: IMAIN,HUGEVAL,TINYVAL,ZERO,OUTPUT_FILES,IN_DATA_FILES
   use specfem_par
   use specfem_par_movie
 
@@ -561,14 +561,14 @@
       max_nb_of_points_per_wavelength = lambdaSmax_histo
       ! do not create this histogram if the model is entirely fluid
       if (.not. ELASTIC_SIMULATION .and. .not. POROELASTIC_SIMULATION) cycle
-      write(outputname,'(a,i6.6,a)') trim(OUTPUT_FILES)//'proc',myrank,'_SDs.bin'
+      write(outputname,'(a,i6.6,a)') trim(IN_DATA_FILES)//'proc',myrank,'_SDs.bin'
 
    else
       ! do not create this histogram if the model is entirely solid
       if (.not. any_fluid_histo_glob) cycle
       min_nb_of_points_per_wavelength = lambdaPmin_in_fluid_histo
       max_nb_of_points_per_wavelength = lambdaPmax_in_fluid_histo
-      write(outputname,'(a,i6.6,a)') trim(OUTPUT_FILES)//'proc',myrank,'_SDp.bin'
+      write(outputname,'(a,i6.6,a)') trim(IN_DATA_FILES)//'proc',myrank,'_SDp.bin'
 
     endif
 
