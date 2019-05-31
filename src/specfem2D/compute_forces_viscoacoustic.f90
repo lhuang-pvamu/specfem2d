@@ -95,6 +95,8 @@
   integer :: num_elements,ispec_p
 
   integer :: i_sls
+
+  !real :: start_time_of_time_loop,finish_time_of_time_loop,duration_of_time_loop_in_seconds
  
   ! choses inner/outer elements
   if (iphase == 1) then
@@ -102,6 +104,8 @@
   else
     num_elements = nspec_inner_acoustic
   endif
+  
+  !call cpu_time(start_time_of_time_loop)
 
   ! loop over spectral elements
   do ispec_p = 1,num_elements
