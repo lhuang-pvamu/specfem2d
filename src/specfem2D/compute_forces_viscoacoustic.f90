@@ -78,12 +78,12 @@
 
   real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLZ) :: potential_elem
   real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLZ) :: tempx1,tempx2,tempx3
-  real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLZ,N_SLS) :: tempx3_e1
+!  real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLZ,N_SLS) :: tempx3_e1
   real(kind=CUSTOM_REAL), dimension(NGLJ,NGLLZ) :: r_xiplus1
 
   ! Jacobian matrix and determinant
   real(kind=CUSTOM_REAL), dimension(6,NGLLX,NGLLZ) :: deriv
-  real(kind=CUSTOM_REAL), dimension(2,NGLLX,NGLLZ,N_SLS) :: deriv_e1
+!  real(kind=CUSTOM_REAL), dimension(2,NGLLX,NGLLZ,N_SLS) :: deriv_e1
   real(kind=CUSTOM_REAL) :: xixl,xizl,gammaxl,gammazl,jacobianl
 
   real(kind=CUSTOM_REAL) :: rhol,fac
@@ -95,7 +95,7 @@
   integer :: num_elements,ispec_p
 
   integer :: i_sls
-
+ 
   ! choses inner/outer elements
   if (iphase == 1) then
     num_elements = nspec_outer_acoustic
@@ -114,6 +114,8 @@
 
     ! gets local potential for element
     rhol = density(1,kmato(ispec))
+
+    !$omp parallel do collapse(2) private(i,j, iglob) firstprivate(rhol)
     do j = 1,NGLLZ
       do i = 1,NGLLX
         iglob = ibool(i,j,ispec)
@@ -130,32 +132,12 @@
           rhol = rhoext(i,j,ispec)
         endif
         deriv(6,i,j) = jacobian(i,j,ispec) / rhol
-
-        if (ATTENUATION_VISCOACOUSTIC .and. (.not. USE_A_STRONG_FORMULATION_FOR_E1) .and. time_stepping_scheme > 1) then
-                deriv_e1(1,i,j,:) = phi_nu1(i,j,ispec,:)
-                deriv_e1(2,i,j,:) = inv_tau_sigma_nu1(i,j,ispec,:)
-        endif
-
       enddo
     enddo
+    !$omp end parallel do
 
     ! first double loop over GLL points to compute and store gradients
     call mxm_2comp_singleA(dux_dxi,dux_dgamma,potential_elem,hprime_xx,hprime_zz)
-
-    ! AXISYM case overwrites dux_dxi
-    if (AXISYM) then
-      if (is_on_the_axis(ispec)) then
-        do j = 1,NGLLZ
-          do i = 1,NGLLX
-            ! derivative along x and along z
-            dux_dxi(i,j) = 0._CUSTOM_REAL
-            do k = 1,NGLLX
-              dux_dxi(i,j) = dux_dxi(i,j) + potential_elem(k,j) * hprimeBar_xx(i,k)
-            enddo
-          enddo
-        enddo
-      endif
-    endif
 
     ! gets derivatives of ux and uz with respect to x and z
     do j = 1,NGLLZ
@@ -171,77 +153,25 @@
       enddo
     enddo
 
-    ! AXISYM case overwrite dux_dxl
-    if (AXISYM) then
-      if (is_on_the_axis(ispec)) then
-        ! dchi/dr=rho * u_r=0 on the axis
-        ! i == 1
-        do j = 1,NGLLZ
-          dux_dxl(1,j) = 0._CUSTOM_REAL
-        enddo
-      endif
-    endif
-
     ! derivative along x and along zbb
     if (PML_BOUNDARY_CONDITIONS) then
       call pml_compute_memory_variables_acoustic(ispec,nglob,potential_acoustic_old,dux_dxl,dux_dzl)
     endif
 
     ! first double loop to compute gradient
-    if (AXISYM) then
-      ! AXISYM case
-      if (is_on_the_axis(ispec)) then
-        do j = 1,NGLLZ
-          do i = 1,NGLLX
-            xixl = deriv(1,i,j)
-            xizl = deriv(2,i,j)
-            gammaxl = deriv(3,i,j)
-            gammazl = deriv(4,i,j)
-            jacobianl = deriv(5,i,j)
-            fac = deriv(6,i,j) ! jacobian/rho
+    do j = 1,NGLLZ
+      do i = 1,NGLLX
+        xixl = deriv(1,i,j)
+        xizl = deriv(2,i,j)
+        gammaxl = deriv(3,i,j)
+        gammazl = deriv(4,i,j)
+        jacobianl = deriv(5,i,j)
+        fac = deriv(6,i,j) ! jacobian/rho
 
-            if (i == 1) then
-              ! dchi/dr=rho * u_r=0 on the axis
-              dux_dxl(i,j) = 0._CUSTOM_REAL
-              r_xiplus1(i,j) = gammaz(i,j,ispec) * jacobianl
-            else
-              r_xiplus1(i,j) = coord(1,ibool(i,j,ispec))/(xiglj(i) + ONE)
-            endif
-            tempx1(i,j) = r_xiplus1(i,j) * fac * (xixl * dux_dxl(i,j) + xizl * dux_dzl(i,j))
-            tempx2(i,j) = r_xiplus1(i,j) * fac * (gammaxl * dux_dxl(i,j) + gammazl * dux_dzl(i,j))
-          enddo
-        enddo
-      else
-        do j = 1,NGLLZ
-          do i = 1,NGLLX
-            xixl = deriv(1,i,j)
-            xizl = deriv(2,i,j)
-            gammaxl = deriv(3,i,j)
-            gammazl = deriv(4,i,j)
-            jacobianl = deriv(5,i,j)
-            fac = deriv(6,i,j) ! jacobian/rho
-
-            tempx1(i,j) = coord(1,ibool(i,j,ispec)) * fac * (xixl * dux_dxl(i,j) + xizl * dux_dzl(i,j))
-            tempx2(i,j) = coord(1,ibool(i,j,ispec)) * fac * (gammaxl * dux_dxl(i,j) + gammazl * dux_dzl(i,j))
-          enddo
-        enddo
-      endif
-    else
-      ! default case
-      do j = 1,NGLLZ
-        do i = 1,NGLLX
-          xixl = deriv(1,i,j)
-          xizl = deriv(2,i,j)
-          gammaxl = deriv(3,i,j)
-          gammazl = deriv(4,i,j)
-          jacobianl = deriv(5,i,j)
-          fac = deriv(6,i,j) ! jacobian/rho
-
-          tempx1(i,j) = fac * (xixl * dux_dxl(i,j) + xizl * dux_dzl(i,j))
-          tempx2(i,j) = fac * (gammaxl * dux_dxl(i,j) + gammazl * dux_dzl(i,j))
-        enddo
+        tempx1(i,j) = fac * (xixl * dux_dxl(i,j) + xizl * dux_dzl(i,j))
+        tempx2(i,j) = fac * (gammaxl * dux_dxl(i,j) + gammazl * dux_dzl(i,j))
       enddo
-    endif
+    enddo
 
     ! first double loop over GLL points to compute and store gradients
     if (PML_BOUNDARY_CONDITIONS) then
@@ -251,84 +181,9 @@
                                                    potential_dot_dot_acoustic_PML,r_xiplus1)
     endif
 
-!! DK DK QUENTIN visco begin
-    if (ATTENUATION_VISCOACOUSTIC .and. (.not. USE_A_STRONG_FORMULATION_FOR_E1)) then
-      ! attenuation is implemented following the memory variable formulation of
-      ! Carcione et al., Wave propagation simulation in a linear viscoacoustic medium,
-      ! Geophysical Journal, vol. 93, p. 393-407 (1988)
-
-      tempx3    = 0._CUSTOM_REAL
-      tempx3_e1 = 0._CUSTOM_REAL
-      do j = 1,NGLLZ
-        do i = 1,NGLLX
-          iglob = ibool(i,j,ispec)
-          ! loop on all the standard linear solids
-          do i_sls = 1,N_SLS
-            tempx3(i,j) = tempx3(i,j) + e1_acous(iglob,i_sls)
-          enddo
-          if (time_stepping_scheme > 1) tempx3_e1(i,j,:) = deriv(5,i,j)*(deriv_e1(2,i,j,:)/deriv_e1(1,i,j,:))*e1_acous(iglob,:)
-          tempx3(i,j) = jacobian(i,j,ispec)  * tempx3(i,j)
-        enddo
-      enddo
-
-    endif
-!! DK DK QUENTIN visco end
-
-!
 ! second double-loop over GLL to compute all the terms
-!
-
-    ! along x direction and z direction
-    ! and assemble the contributions
-    if (AXISYM) then
-      ! axisymmetric case
-      if (is_on_the_axis(ispec)) then
-        do j = 1,NGLLZ
-          do i = 1,NGLLX
-            iglob = ibool(i,j,ispec)
-            if (.not. iglob_is_forced(iglob)) then
-              ! assembles the contributions
-              temp1l = 0._CUSTOM_REAL
-              temp2l = 0._CUSTOM_REAL
-              do k = 1,NGLLX
-                temp1l = temp1l + tempx1(k,j) * hprimeBarwglj_xx(k,i)
-                temp2l = temp2l + tempx2(i,k) * hprimewgll_zz(k,j)
-              enddo
-              ! sums contributions from each element to the global values
-              potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) &
-                                                  - (wzgll(j) * temp1l + wxglj(i) * temp2l)
-              if (ATTENUATION_VISCOACOUSTIC .and. (.not. USE_A_STRONG_FORMULATION_FOR_E1) &
-                   .and. time_stepping_scheme > 1) dot_e1(iglob,:) = dot_e1(iglob,:) &
-                                                      - (wzgll(j) * temp1l + wxglj(i) * temp2l)
-            endif
-          enddo
-        enddo
-      else
-        do j = 1,NGLLZ
-          do i = 1,NGLLX
-            iglob = ibool(i,j,ispec)
-            if (.not. iglob_is_forced(iglob)) then
-              ! assembles the contributions
-              temp1l = 0._CUSTOM_REAL
-              temp2l = 0._CUSTOM_REAL
-              do k = 1,NGLLX
-                temp1l = temp1l + tempx1(k,j) * hprimewgll_xx(k,i)
-                temp2l = temp2l + tempx2(i,k) * hprimewgll_zz(k,j)
-              enddo
-              ! sums contributions from each element to the global values
-              potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) &
-                                                  - (wzgll(j) * temp1l + wxgll(i) * temp2l)
-              if (ATTENUATION_VISCOACOUSTIC .and. (.not. USE_A_STRONG_FORMULATION_FOR_E1) &
-                  .and. time_stepping_scheme > 1) dot_e1(iglob,:) = dot_e1(iglob,:) &
-                                                      - (wzgll(j) * temp1l + wxgll(i) * temp2l)
-            endif
-          enddo
-        enddo
-      endif
-    else
-      ! default case
-      do j = 1,NGLLZ
-        do i = 1,NGLLX
+    do j = 1,NGLLZ
+      do i = 1,NGLLX
           iglob = ibool(i,j,ispec)
           if (.not. iglob_is_forced(iglob)) then
             ! assembles the contributions
@@ -341,19 +196,11 @@
             ! sums contributions from each element to the global values
             sum_forces = wzgll(j) * temp1l + wxgll(i) * temp2l
             potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) - sum_forces
-            if (ATTENUATION_VISCOACOUSTIC .and. (.not. USE_A_STRONG_FORMULATION_FOR_E1) &
-                .and. time_stepping_scheme > 1) dot_e1(iglob,:) = dot_e1(iglob,:) - sum_forces
-            if (ATTENUATION_VISCOACOUSTIC .and. USE_A_STRONG_FORMULATION_FOR_E1) then
-              call get_attenuation_forces_strong_form(sum_forces,sum_forces_old(i,j,ispec), &
-                                                      forces_attenuation,i,j,ispec,iglob,e1_acous_sf)
-              potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) - forces_attenuation
-            endif
           endif
-        enddo
       enddo
-    endif
+    enddo
 
-    ! PML contribution
+  ! PML contribution
     if (PML_BOUNDARY_CONDITIONS) then
       if (ispec_is_PML(ispec)) then
         do j = 1,NGLLZ
@@ -366,54 +213,7 @@
         enddo
       endif
     endif
-
-!! DK DK QUENTIN visco begin
-    if (ATTENUATION_VISCOACOUSTIC .and. (.not. USE_A_STRONG_FORMULATION_FOR_E1)) then
-      if (AXISYM) then
-        ! axisymmetric case
-        if (is_on_the_axis(ispec)) then
-          do j = 1,NGLLZ
-            do i = 1,NGLLX
-              ! sums contributions from each element to the global values
-              iglob = ibool(i,j,ispec)
-              if (.not. iglob_is_forced(iglob)) then
-                potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + wzgll(j) * wxglj(i) * tempx3(i,j)
-                ! loop over all relaxation mechanisms
-                if (time_stepping_scheme > 1) dot_e1(iglob,:) = dot_e1(iglob,:) - wzgll(j) * wxglj(i) * tempx3_e1(i,j,:)
-              endif
-            enddo
-          enddo
-        else
-          do j = 1,NGLLZ
-            do i = 1,NGLLX
-              ! sums contributions from each element to the global values
-              iglob = ibool(i,j,ispec)
-              if (.not. iglob_is_forced(iglob)) then
-                potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + wzgll(j) * wxgll(i) * tempx3(i,j)
-                ! loop over all relaxation mechanisms
-                if (time_stepping_scheme > 1) dot_e1(iglob,:) = dot_e1(iglob,:) - wzgll(j) * wxgll(i) * tempx3_e1(i,j,:)
-              endif
-            enddo
-          enddo
-        endif
-      else
-        do j = 1,NGLLZ
-          do i = 1,NGLLX
-            ! sums contributions from each element to the global values
-            iglob = ibool(i,j,ispec)
-            if (.not. iglob_is_forced(iglob)) then
-              potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + wzgll(j) * wxgll(i) * tempx3(i,j)
-              ! loop over all relaxation mechanisms
-              if (time_stepping_scheme > 1) dot_e1(iglob,:) = dot_e1(iglob,:) - wzgll(j) * wxgll(i) * tempx3_e1(i,j,:)
-            endif
-          enddo
-        enddo
-      endif
-    endif
-!! DK DK QUENTIN visco end
-
   enddo ! end of loop over all spectral elements
-
   contains
 
 !---------------------------------------------------------------------------------------
