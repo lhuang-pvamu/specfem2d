@@ -57,6 +57,9 @@
   use specfem_par, only: ispec_is_PML
 
   implicit none
+  !#include "f_hpm.h"
+  integer :: myid, nthreads
+  integer :: OMP_GET_NUM_THREADS, OMP_GET_THREAD_NUM
 
   real(kind=CUSTOM_REAL), dimension(nglob),intent(inout) :: potential_dot_dot_acoustic
   real(kind=CUSTOM_REAL), dimension(nglob),intent(in) :: potential_dot_acoustic,potential_acoustic
@@ -96,7 +99,7 @@
 
   integer :: i_sls
 
-  !real :: start_time_of_time_loop,finish_time_of_time_loop,duration_of_time_loop_in_seconds
+  !real :: start_time_of_time_loop,finish_time_of_time_lwzglloop,duration_of_time_loop_in_seconds
  
   ! choses inner/outer elements
   if (iphase == 1) then
@@ -106,9 +109,20 @@
   endif
   
   !call cpu_time(start_time_of_time_loop)
+  !$omp parallel
+  !$omp single 
+  !nthreads = OMP_GET_NUM_THREADS()
+  !print *,'num threads = ', nthreads
+  !$omp end single
+  !$omp end parallel
 
   ! loop over spectral elements
+  !$omp parallel do private(i, j, k, ispec_p, ispec, rhol, iglob, xizl, xixl, gammaxl, gammazl, jacobianl, fac, sum_forces, temp1l, temp2l, deriv, tempx1, tempx2, dux_dxl, dux_dzl, dux_dxi, dux_dgamma, potential_elem, potential_dot_dot_acoustic_PML )
   do ispec_p = 1,num_elements
+    !myid = OMP_GET_THREAD_NUM()
+    !if (myid == 1) then
+    !  print *,' spec = ', ispec_p
+    !endif
 
     ! returns element id from stored element list
     ispec = phase_ispec_inner_acoustic(ispec_p,iphase)
@@ -119,7 +133,6 @@
     ! gets local potential for element
     rhol = density(1,kmato(ispec))
 
-    !$omp parallel do collapse(2) private(i,j, iglob) firstprivate(rhol)
     do j = 1,NGLLZ
       do i = 1,NGLLX
         iglob = ibool(i,j,ispec)
@@ -138,7 +151,6 @@
         deriv(6,i,j) = jacobian(i,j,ispec) / rhol
       enddo
     enddo
-    !$omp end parallel do
 
     ! first double loop over GLL points to compute and store gradients
     call mxm_2comp_singleA(dux_dxi,dux_dgamma,potential_elem,hprime_xx,hprime_zz)
@@ -146,6 +158,13 @@
     ! gets derivatives of ux and uz with respect to x and z
     do j = 1,NGLLZ
       do i = 1,NGLLX
+          dux_dxi(i,j) = 0._CUSTOM_REAL
+          dux_dgamma(i,j) = 0._CUSTOM_REAL
+
+          do k = 1,NGLLX
+            dux_dxi(i,j) = dux_dxi(i,j) + potential_elem(k,j) * hprime_xx(i,k)
+            dux_dgamma(i,j) = dux_dgamma(i,j) + potential_elem(i,k) * hprime_zz(j,k)
+          enddo
         xixl = deriv(1,i,j)
         xizl = deriv(2,i,j)
         gammaxl = deriv(3,i,j)
@@ -159,7 +178,9 @@
 
     ! derivative along x and along zbb
     if (PML_BOUNDARY_CONDITIONS) then
+      !$OMP CRITICAL
       call pml_compute_memory_variables_acoustic(ispec,nglob,potential_acoustic_old,dux_dxl,dux_dzl)
+      !$OMP END CRITICAL
     endif
 
     ! first double loop to compute gradient
@@ -180,9 +201,11 @@
     ! first double loop over GLL points to compute and store gradients
     if (PML_BOUNDARY_CONDITIONS) then
       ! calculates contribution from each C-PML element to update acceleration
+      !$OMP CRITICAL
       call pml_compute_accel_contribution_acoustic(ispec,nglob, &
                                                    potential_acoustic,potential_acoustic_old,potential_dot_acoustic, &
                                                    potential_dot_dot_acoustic_PML,r_xiplus1)
+      !$OMP END CRITICAL
     endif
 
 ! second double-loop over GLL to compute all the terms
@@ -204,6 +227,7 @@
       enddo
     enddo
 
+
   ! PML contribution
     if (PML_BOUNDARY_CONDITIONS) then
       if (ispec_is_PML(ispec)) then
@@ -218,6 +242,7 @@
       endif
     endif
   enddo ! end of loop over all spectral elements
+  !$omp end parallel do
   contains
 
 !---------------------------------------------------------------------------------------
