@@ -82,6 +82,8 @@
   endif
 
   ! loop over spectral elements
+  !$omp parallel do private(i, j, k, ispec_p, ispec, rhol, iglob, xizl, xixl, gammaxl, gammazl, jacobianl, tempx1, tempx2, dux_dxl,
+  !dux_dzl, dux_dxi, dux_dgamma, xxi, r_xiplus1, kappal, mul_relaxed, lambdal_relaxed, cpl)
   do ispec_p = 1,num_elements
 
     ! returns element id from stored element list

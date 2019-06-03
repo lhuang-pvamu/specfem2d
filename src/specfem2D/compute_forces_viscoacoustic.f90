@@ -117,7 +117,7 @@
   !$omp end parallel
 
   ! loop over spectral elements
-  !$omp parallel do private(i, j, k, ispec_p, ispec, rhol, iglob, xizl, xixl, gammaxl, gammazl, jacobianl, fac, sum_forces, temp1l, temp2l, deriv, tempx1, tempx2, dux_dxl, dux_dzl, dux_dxi, dux_dgamma, potential_elem, potential_dot_dot_acoustic_PML )
+  !$omp parallel do private(i, j, k, ispec_p, ispec, rhol, iglob, xizl, xixl, gammaxl, gammazl, jacobianl, fac, sum_forces, temp1l, temp2l, deriv, tempx1, tempx2, dux_dxl, dux_dzl, dux_dxi, dux_dgamma, potential_elem )
   do ispec_p = 1,num_elements
     !myid = OMP_GET_THREAD_NUM()
     !if (myid == 1) then
@@ -178,9 +178,7 @@
 
     ! derivative along x and along zbb
     if (PML_BOUNDARY_CONDITIONS) then
-      !$OMP CRITICAL
       call pml_compute_memory_variables_acoustic(ispec,nglob,potential_acoustic_old,dux_dxl,dux_dzl)
-      !$OMP END CRITICAL
     endif
 
     ! first double loop to compute gradient
@@ -201,11 +199,9 @@
     ! first double loop over GLL points to compute and store gradients
     if (PML_BOUNDARY_CONDITIONS) then
       ! calculates contribution from each C-PML element to update acceleration
-      !$OMP CRITICAL
       call pml_compute_accel_contribution_acoustic(ispec,nglob, &
                                                    potential_acoustic,potential_acoustic_old,potential_dot_acoustic, &
                                                    potential_dot_dot_acoustic_PML,r_xiplus1)
-      !$OMP END CRITICAL
     endif
 
 ! second double-loop over GLL to compute all the terms

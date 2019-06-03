@@ -326,6 +326,8 @@
 
   if (.not. GPU_MODE) then
     ! kernels on CPU
+    !$omp parallel private(i,j,k,ispec,iglob,tempx1l,tempx2l,b_tempx1l,b_tempx2l,xixl,xizl,gammaxl,gammazl)
+    !$omp do 
     do ispec = 1, nspec
       if (ispec_is_acoustic(ispec)) then
         do j = 1, NGLLZ
@@ -345,15 +347,11 @@
             tempx2l = ZERO
             b_tempx1l = ZERO
             b_tempx2l = ZERO
-          !  bb_tempx1l = ZERO
-          !  bb_tempx2l = ZERO
             do k = 1,NGLLX
               ! derivative along x
-              !tempx1l = tempx1l + potential_dot_dot_acoustic(ibool(k,j,ispec))*hprime_xx(i,k)
               tempx1l = tempx1l + potential_acoustic(ibool(k,j,ispec))*hprime_xx(i,k) !!! YANGL
               b_tempx1l = b_tempx1l + b_potential_acoustic(ibool(k,j,ispec))*hprime_xx(i,k)
               ! derivative along z
-              !tempx2l = tempx2l + potential_dot_dot_acoustic(ibool(i,k,ispec))*hprime_zz(j,k)
               tempx2l = tempx2l + potential_acoustic(ibool(i,k,ispec))*hprime_zz(j,k) !!! YANGL
               b_tempx2l = b_tempx2l + b_potential_acoustic(ibool(i,k,ispec))*hprime_zz(j,k)
             enddo
@@ -372,20 +370,14 @@
         enddo !j = 1, NGLLZ
       endif
     enddo
+    !$omp end do 
 
+    !$omp do 
     do ispec = 1,nspec
       if (ispec_is_acoustic(ispec)) then
         do j = 1, NGLLZ
           do i = 1, NGLLX
             iglob = ibool(i,j,ispec)
-            ! YANGL
-            !!!! old expression (from elastic kernels)
-            !!!rho_ac_kl(i,j,ispec) = rho_ac_kl(i,j,ispec) - rhol_ac_global(iglob)  * &
-            !!!      dot_product(accel_ac(:,iglob),b_displ_ac(:,iglob)) * deltat
-            !!!kappa_ac_kl(i,j,ispec) = kappa_ac_kl(i,j,ispec) - kappal_ac_global(iglob) * &
-            !!!      potential_dot_dot_acoustic(iglob)/kappal_ac_global(iglob) * &
-            !!!      b_potential_dot_dot_acoustic(iglob)/kappal_ac_global(iglob)&
-            !!!      * deltat
             !!!! new expression (from PDE-constrained optimization, coupling terms changed as well)
             rho_ac_kl(i,j,ispec) = rho_ac_kl(i,j,ispec) + rhol_ac_global(iglob) * &
                                    dot_product(accel_ac(:,iglob),b_displ_ac(:,iglob)) * &
@@ -402,6 +394,8 @@
         enddo
       endif
     enddo
+    !$omp end do 
+    !$omp end parallel
   else
     ! on GPU
     call compute_kernels_acoustic_cuda(Mesh_pointer,deltatf)
