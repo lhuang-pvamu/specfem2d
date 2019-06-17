@@ -9,6 +9,7 @@ config.status
 setup/config.h
 setup/constants.h
 setup/precision.h
+setup/version.fh
 
 # Scotch files
 src/meshfem2D/scotch_5.1.12b/src/Makefile.inc

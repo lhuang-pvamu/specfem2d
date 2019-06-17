@@ -399,11 +399,11 @@
 
   return
   end subroutine write_file_dump
+#ifdef USE_MPI
   !
   ! ------------------------------------------------------------
   !
   subroutine mask_duplicates()
-    !
 
   implicit none
 
@@ -472,4 +472,6 @@
 
   return
   end subroutine mask_write_matrix
+#endif
+
 end subroutine write_wavefield_dumps
