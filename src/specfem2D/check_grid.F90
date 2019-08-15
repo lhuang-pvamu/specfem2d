@@ -85,6 +85,8 @@
   double precision :: lambdaPmin_in_fluid_histo,lambdaPmax_in_fluid_histo
   double precision :: lambdaSmin_histo,lambdaSmax_histo
 
+  double precision :: PsampdensMin, SsampdensMin ! for stats digest output (TEC)
+
   !********************************************************************************
 
   ! empirical choice for distorted elements to estimate time step and period resolved:
@@ -399,6 +401,8 @@
     endif
 
     create_wavelength_histogram = .false.
+    PsampdensMin = HUGEVAL
+    SsampdensMin = HUGEVAL
 
     ! only if time source is not a Dirac or Heaviside (otherwise maximum frequency of spectrum undefined)
     ! and if source is not an initial field, for the same reason
@@ -447,9 +451,11 @@
             ! for histogram
             lambdaPmin_in_fluid_histo = lambdaPmin_in_fluid_histo/f0max
             lambdaPmax_in_fluid_histo = lambdaPmax_in_fluid_histo/f0max
+            PsampdensMin = min(PsampdensMin,lambdaPmin_in_fluid_histo)
 
             lambdaSmin_histo = lambdaSmin/f0max
             lambdaSmax_histo = lambdaSmax/f0max
+            SsampdensMin = min(SsampdensMin,lambdaSmin_histo)
 
             create_wavelength_histogram = .true.
           endif
@@ -457,6 +463,14 @@
         endif
       enddo
     endif
+!   Output a one-line (grep-able) digest of key stability indicators (TEC)
+    write(IMAIN,*) 'check_grid digest: gridMax=',sngl(distance_max), &
+        ', maxFreq=',sngl(1.d0/pmax_glob), &
+        ', maxDT=',sngl(dt_suggested_glob), &
+        ', maxCFL(<0.5?)=',sngl(courant_stability_number_max), &
+        ', PsampdensMin(>5.5?)=',sngl(PsampdensMin), &
+        ', SsampdensMin(>4.5?)=',sngl(SsampdensMin)
+    call flush_IMAIN()
   endif
 
   ! master sends to all others
