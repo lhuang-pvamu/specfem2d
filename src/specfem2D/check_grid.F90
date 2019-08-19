@@ -464,7 +464,8 @@
       enddo
     endif
 !   Output a one-line (grep-able) digest of key stability indicators (TEC)
-    write(IMAIN,*) 'check_grid digest: gridMax=',sngl(distance_max), &
+    write(IMAIN, '(a,f8.2,a,f7.2,a,1pe10.3,a,0pf6.2,a,f6.2,a,f6.2)' ) &
+        'check_grid digest: gridMax=',sngl(distance_max), &
         ', maxFreq=',sngl(1.d0/pmax_glob), &
         ', maxDT=',sngl(dt_suggested_glob), &
         ', maxCFL(<0.5?)=',sngl(courant_stability_number_max), &
