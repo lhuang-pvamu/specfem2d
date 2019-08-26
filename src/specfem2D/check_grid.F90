@@ -291,7 +291,7 @@
     ! suggested timestep: uses minimum GLL point distance such that
     ! dt = C * min_gll_distance / vs_max
     vel_max = max(vpImax_local,vsmax_local)
-    dt_suggested = min(dt_suggested,COURANT_SUGGESTED * distance_min_local * percent_GLL(NGLLX) / vel_max)
+    dt_suggested = min(dt_suggested,COURANT_SUGGESTED * distance_min_local * percent_GLL(NGLLX) / (vel_max+TINYVAL) )
 
     ! check if fluid region with Vs = 0
     if (vsmin_local > TINYVAL) then
