@@ -109,15 +109,11 @@
   endif
   
   !call cpu_time(start_time_of_time_loop)
-  !$omp parallel
-  !$omp single 
-  !nthreads = OMP_GET_NUM_THREADS()
-  !print *,'num threads = ', nthreads
-  !$omp end single
-  !$omp end parallel
 
   ! loop over spectral elements
-  !$omp parallel do private(i, j, k, ispec_p, ispec, rhol, iglob, xizl, xixl, gammaxl, gammazl, jacobianl, fac, sum_forces, temp1l, temp2l, deriv, tempx1, tempx2, dux_dxl, dux_dzl, dux_dxi, dux_dgamma, potential_elem )
+  !$omp target teams map(i, j, k, ispec_p, ispec, rhol, iglob, xizl, xixl, gammaxl, gammazl, jacobianl, fac, sum_forces, &
+  !$omp& temp1l, temp2l, deriv, tempx1, tempx2, dux_dxl, dux_dzl, dux_dxi, dux_dgamma, potential_elem )
+  !$omp parallel do
   do ispec_p = 1,num_elements
     !myid = OMP_GET_THREAD_NUM()
     !if (myid == 1) then
@@ -239,6 +235,7 @@
     endif
   enddo ! end of loop over all spectral elements
   !$omp end parallel do
+  !$omp end target teams
   contains
 
 !---------------------------------------------------------------------------------------
