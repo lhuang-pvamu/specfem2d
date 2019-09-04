@@ -31,12 +31,15 @@
 !
 !========================================================================
 
-  subroutine compute_forces_viscoacoustic(potential_dot_dot_acoustic,potential_dot_acoustic,potential_acoustic, &
-                                          PML_BOUNDARY_CONDITIONS,potential_acoustic_old,iphase,e1_acous_sf,sum_forces_old)
+  subroutine compute_forces_viscoacoustic( &
+    potential_dot_dot_acoustic,potential_dot_acoustic,potential_acoustic, &
+    PML_BOUNDARY_CONDITIONS,potential_acoustic_old,iphase,e1_acous_sf,sum_forces_old)
 
-! compute forces in the acoustic elements in forward simulation and in adjoint simulation in adjoint inversion
+! compute forces in the acoustic elements in forward simulation and 
+! in adjoint simulation in adjoint inversion
 
-  use constants, only: CUSTOM_REAL,NGLLX,NGLLZ,NGLJ,CPML_X_ONLY,CPML_Z_ONLY,IRIGHT,ILEFT,IBOTTOM,ITOP, &
+  use constants, only:  &
+    CUSTOM_REAL,NGLLX,NGLLZ,NGLJ,CPML_X_ONLY,CPML_Z_ONLY,IRIGHT,ILEFT,IBOTTOM,ITOP, &
     ZERO,ONE,TWO,TWO_THIRDS, &
     ALPHA_LDDRK,BETA_LDDRK,C_LDDRK,USE_A_STRONG_FORMULATION_FOR_E1
 
@@ -46,10 +49,12 @@
                          xix,xiz,gammax,gammaz,jacobian, &
                          hprime_xx,hprimewgll_xx, &
                          hprime_zz,hprimewgll_zz,wxgll,wzgll, &
-                         AXISYM,is_on_the_axis,coord,hprimeBar_xx,hprimeBarwglj_xx,xiglj,wxglj,ATTENUATION_VISCOACOUSTIC, &
-                         N_SLS, iglob_is_forced,time_stepping_scheme,phi_nu1,inv_tau_sigma_nu1, &
-                         e1_acous,dot_e1
+  !                       is_on_the_axis,phi_nu1,xiglj,wxglj, &
+  !                       coord,hprimeBar_xx,hprimeBarwglj_xx,inv_tau_sigma_nu1, &
+  !                       AXISYM,ATTENUATION_VISCOACOUSTIC,e1_acous,dot_e1,time_stepping_scheme &
+                         N_SLS, iglob_is_forced
 
+                         
   ! overlapping communication
   use specfem_par, only: nspec_inner_acoustic,nspec_outer_acoustic,phase_ispec_inner_acoustic
 
@@ -58,8 +63,8 @@
 
   implicit none
   !#include "f_hpm.h"
-  integer :: myid, nthreads
-  integer :: OMP_GET_NUM_THREADS, OMP_GET_THREAD_NUM
+  !integer :: myid, nthreads
+  !integer :: OMP_GET_NUM_THREADS, OMP_GET_THREAD_NUM
 
   real(kind=CUSTOM_REAL), dimension(nglob),intent(inout) :: potential_dot_dot_acoustic
   real(kind=CUSTOM_REAL), dimension(nglob),intent(in) :: potential_dot_acoustic,potential_acoustic
@@ -80,7 +85,7 @@
   real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLZ) :: dux_dxl,dux_dzl
 
   real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLZ) :: potential_elem
-  real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLZ) :: tempx1,tempx2,tempx3
+  real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLZ) :: tempx1,tempx2    ! ,tempx3
 !  real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLZ,N_SLS) :: tempx3_e1
   real(kind=CUSTOM_REAL), dimension(NGLJ,NGLLZ) :: r_xiplus1
 
@@ -90,14 +95,14 @@
   real(kind=CUSTOM_REAL) :: xixl,xizl,gammaxl,gammazl,jacobianl
 
   real(kind=CUSTOM_REAL) :: rhol,fac
-  real(kind=CUSTOM_REAL) :: temp1l,temp2l,sum_forces,forces_attenuation
+  real(kind=CUSTOM_REAL) :: temp1l,temp2l,sum_forces   ! ,forces_attenuation
 
   ! local PML parameters
   real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLZ) :: potential_dot_dot_acoustic_PML
 
   integer :: num_elements,ispec_p
 
-  integer :: i_sls
+  ! integer :: i_sls
 
   !real :: start_time_of_time_loop,finish_time_of_time_lwzglloop,duration_of_time_loop_in_seconds
  
