@@ -123,8 +123,8 @@
 
   ! loop over spectral elements
   !$omp parallel do private(i, j, k, ispec_p, ispec, rhol, iglob, xizl, xixl, gammaxl, gammazl, jacobianl, fac, sum_forces, &
-  !$omp& temp1l, temp2l, deriv, tempx1, tempx2, dux_dxl, dux_dzl, dux_dxi, dux_dgamma, potential_elem, potential_dot_dot_acoustic_PML ) &
-  !$omp& schedule(static)
+  !$omp& temp1l, temp2l, deriv, tempx1, tempx2, dux_dxl, dux_dzl, dux_dxi, dux_dgamma, potential_elem, &
+  !$omp& potential_dot_dot_acoustic_PML) schedule(static)
   do ispec_p = 1,num_elements
     !myid = OMP_GET_THREAD_NUM()
     !if (myid == 1) then
