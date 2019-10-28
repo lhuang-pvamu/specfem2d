@@ -91,6 +91,28 @@ AM_CONDITIONAL([COND_CUDA_PLUS],
      -o "$want_cuda" = cuda9 \]
 )
 
+###
+### OpenMP
+###
+
+AC_ARG_WITH([openmp],
+    [AS_HELP_STRING([--with-openmp],
+        [build OpenMP enabled version @<:@default=no@:>@])],
+    [want_openmp="$withval"],
+    [want_openmp=no])
+AM_CONDITIONAL([COND_OPENMP], [test "$want_openmp" = yes])
+
+###
+### OpenACC
+###
+
+AC_ARG_WITH([openacc],
+    [AS_HELP_STRING([--with-openacc],
+        [build parallel version @<:@default=no@:>@])],
+    [want_openacc="$withval"],
+    [want_openacc=no])
+AM_CONDITIONAL([COND_MPI], [test "$want_openacc" = yes])
+
 ############################################################
 
 # Checks for programs.
