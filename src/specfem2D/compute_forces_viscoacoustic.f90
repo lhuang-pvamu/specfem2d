@@ -158,6 +158,7 @@
     endif
 
     ! gets derivatives of ux and uz with respect to x and z
+    ! possible acc 
     do j = 1,NGLLZ
       do i = 1,NGLLX
         xixl = deriv(1,i,j)
@@ -228,6 +229,7 @@
       endif
     else
       ! default case
+      ! possible ACC
       do j = 1,NGLLZ
         do i = 1,NGLLX
           xixl = deriv(1,i,j)
@@ -327,30 +329,52 @@
       endif
     else
       ! default case
-      do j = 1,NGLLZ
-        do i = 1,NGLLX
-          iglob = ibool(i,j,ispec)
-          if (.not. iglob_is_forced(iglob)) then
-            ! assembles the contributions
-            temp1l = 0._CUSTOM_REAL
-            temp2l = 0._CUSTOM_REAL
-            do k = 1,NGLLX
-              temp1l = temp1l + tempx1(k,j) * hprimewgll_xx(k,i)
-              temp2l = temp2l + tempx2(i,k) * hprimewgll_zz(k,j)
-            enddo
-            ! sums contributions from each element to the global values
-            sum_forces = wzgll(j) * temp1l + wxgll(i) * temp2l
-            potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) - sum_forces
-            if (ATTENUATION_VISCOACOUSTIC .and. (.not. USE_A_STRONG_FORMULATION_FOR_E1) &
-                .and. time_stepping_scheme > 1) dot_e1(iglob,:) = dot_e1(iglob,:) - sum_forces
-            if (ATTENUATION_VISCOACOUSTIC .and. USE_A_STRONG_FORMULATION_FOR_E1) then
-              call get_attenuation_forces_strong_form(sum_forces,sum_forces_old(i,j,ispec), &
-                                                      forces_attenuation,i,j,ispec,iglob,e1_acous_sf)
-              potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) - forces_attenuation
+      if (.not. ATTENUATION_VISCOACOUSTIC) then
+        !$acc parallel loop
+        do j = 1,NGLLZ
+          do i = 1,NGLLX
+            iglob = ibool(i,j,ispec)
+            if (.not. iglob_is_forced(iglob)) then
+              ! assembles the contributions
+              temp1l = 0._CUSTOM_REAL
+              temp2l = 0._CUSTOM_REAL
+              do k = 1,NGLLX
+                temp1l = temp1l + tempx1(k,j) * hprimewgll_xx(k,i)
+                temp2l = temp2l + tempx2(i,k) * hprimewgll_zz(k,j)
+              enddo
+              ! sums contributions from each element to the global values
+              sum_forces = wzgll(j) * temp1l + wxgll(i) * temp2l
+              potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) - sum_forces
             endif
-          endif
+          enddo
         enddo
-      enddo
+      else
+        do j = 1,NGLLZ
+          do i = 1,NGLLX
+            iglob = ibool(i,j,ispec)
+            if (.not. iglob_is_forced(iglob)) then
+              ! assembles the contributions
+              temp1l = 0._CUSTOM_REAL
+              temp2l = 0._CUSTOM_REAL
+              do k = 1,NGLLX
+                temp1l = temp1l + tempx1(k,j) * hprimewgll_xx(k,i)
+                temp2l = temp2l + tempx2(i,k) * hprimewgll_zz(k,j)
+              enddo
+              ! sums contributions from each element to the global values
+              sum_forces = wzgll(j) * temp1l + wxgll(i) * temp2l
+              potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) - sum_forces
+              if ((.not. USE_A_STRONG_FORMULATION_FOR_E1) .and. time_stepping_scheme > 1) then
+                dot_e1(iglob,:) = dot_e1(iglob,:) - sum_forces
+                if (USE_A_STRONG_FORMULATION_FOR_E1) then
+                  call get_attenuation_forces_strong_form(sum_forces,sum_forces_old(i,j,ispec), &
+                      forces_attenuation,i,j,ispec,iglob,e1_acous_sf)
+                  potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) - forces_attenuation
+                endif
+              endif
+            endif
+          enddo
+        enddo
+      endif
     endif
 
     ! PML contribution
