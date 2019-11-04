@@ -32,6 +32,7 @@
 !========================================================================
 
   subroutine compute_coef_convolution(bb,deltat,coef0,coef1,coef2)
+!$acc routine seq
 
   ! compute coefficient used in second-order convolution scheme, from
   ! second-order accurate convolution term calculation from equation (21) of
@@ -81,6 +82,9 @@
   integer :: CPML_X_ONLY_TEMP,CPML_Z_ONLY_TEMP,CPML_XZ_TEMP
 
   logical,parameter :: FIRST_ORDER_CONVOLUTION = .false.
+
+  !$acc routine(stop_the_code) seq
+  !$acc routine(compute_coef_convolution) seq
 
   if (index_ik == 13) then
     CPML_X_ONLY_TEMP = CPML_X_ONLY
@@ -271,6 +275,7 @@
   ! local variables
   double precision :: bar_A_0, bar_A_1, bar_A_2, bar_A_3, bar_A_4,gamma_x,gamma_z
 
+  !$acc routine(compute_coef_convolution) seq
 
   if (CPML_region_local == CPML_XZ) then
     bar_A_0 = kappa_x * kappa_z
