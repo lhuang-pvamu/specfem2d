@@ -42,7 +42,7 @@
   subroutine pml_compute_accel_contribution_acoustic(ispec,nglob, &
                                                      potential_acoustic,potential_acoustic_old,potential_dot_acoustic, &
                                                      potential_dot_dot_acoustic_PML,r_xiplus1)
-
+!$acc routine seq
 ! for acoustic elements
 
   use constants, only: CUSTOM_REAL,NGLLX,NGLLZ,CPML_X_ONLY,CPML_Z_ONLY,ALPHA_LDDRK,BETA_LDDRK,C_LDDRK, &
@@ -58,7 +58,6 @@
   ! PML arrays
   use specfem_par, only: nspec_PML,ispec_is_PML,spec_to_PML,region_CPML, &
                 K_x_store,K_z_store,d_x_store,d_z_store,alpha_x_store,alpha_z_store
-
   implicit none
 
   integer,intent(in) :: ispec
@@ -82,6 +81,9 @@
   ! material properties of the acoustic medium
   real(kind=CUSTOM_REAL) :: mul_relaxed,lambdal_relaxed,kappal,cpl,rhol
   real(kind=CUSTOM_REAL) :: fac
+
+!$acc routine(l_parameter_computation) seq
+!$acc routine(stop_the_code) seq
 
   ! checks if anything to do in this slice
   if (nspec_PML == 0) return

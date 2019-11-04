@@ -49,11 +49,14 @@ module specfem_par
   !---------------------------------------------------------------------
   integer :: numat
   logical :: assign_external_model
+  !$acc declare create(assign_external_model)
 
   ! poroelastic and elastic coefficients
   double precision, dimension(:,:,:), allocatable :: poroelastcoef
+  !$acc declare create(poroelastcoef)
   logical, dimension(:), allocatable :: already_shifted_velocity
   real(kind=CUSTOM_REAL), dimension(:,:,:), allocatable :: vpext,vsext,rhoext
+  !$acc declare create(rhoext, vpext)
   real(kind=CUSTOM_REAL), dimension(:,:,:), allocatable :: QKappa_attenuationext,Qmu_attenuationext
 
   ! anisotropy parameters
@@ -93,16 +96,22 @@ module specfem_par
 
   ! PML
   logical, dimension(:), allocatable :: ispec_is_PML
+  !$acc declare create(ispec_is_PML)
   integer :: nspec_PML
+  !$acc declare create(nspec_PML)
 
   integer, dimension(:), allocatable :: region_CPML
+  !$acc declare create(region_CPML)
   integer, dimension(:), allocatable :: spec_to_PML
+  !$acc declare create(spec_to_PML)
 
   logical, dimension(:,:), allocatable :: which_PML_elem
   logical, dimension(:), allocatable  :: mask_ibool_PML
 
   double precision, dimension(:,:,:), allocatable :: &
     K_x_store,K_z_store,d_x_store,d_z_store,alpha_x_store,alpha_z_store
+  !$acc declare create(K_x_store, K_z_store, D_x_store, D_z_store)
+  !$acc declare create(alpha_x_store, alpha_z_store)
   double precision :: min_distance_between_CPML_parameter
 
   ! Stacey BC
@@ -239,20 +248,27 @@ module specfem_par
   double precision, dimension(NGLLZ) :: zigll
 
   real(kind=CUSTOM_REAL), dimension(NGLLX) :: wxgll
+  !$acc declare create(wxgll)
   real(kind=CUSTOM_REAL), dimension(NGLLZ) :: wzgll
+  !$acc declare create(wzgll)
 
   ! derivatives of Lagrange polynomials
   real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLX) :: hprime_xx,hprimewgll_xx
+  !$acc declare create(hprime_xx)
   real(kind=CUSTOM_REAL), dimension(NGLLZ,NGLLZ) :: hprime_zz,hprimewgll_zz
+  !$acc declare create(hprime_zz)
 
   double precision, dimension(:,:,:), allocatable :: shape2D
   double precision, dimension(:,:,:,:), allocatable :: dershape2D
 
   real(kind=CUSTOM_REAL), dimension(:,:,:), allocatable  :: xix,xiz,gammax,gammaz,jacobian
+  !$acc declare create(jacobian, xix, xiz, gammax, gammaz)
   integer, dimension(:,:,:), allocatable :: ibool
+  !$acc declare create(ibool)
 
   integer, dimension(:,:), allocatable  :: knods
   integer, dimension(:), allocatable :: kmato
+  !$acc declare create(kmato)
 
   integer, dimension(:), allocatable :: numabs, &
      ibegin_edge1,iend_edge1,ibegin_edge3,iend_edge3,ibegin_edge4,iend_edge4,ibegin_edge2,iend_edge2
@@ -271,14 +287,17 @@ module specfem_par
   integer :: nelem_on_the_axis
   ! Flag to know if an element is on the axis
   logical, dimension(:), allocatable :: is_on_the_axis
+  !$acc declare create(is_on_the_axis)
   integer, dimension(:), allocatable :: ispec_of_axial_elements
 
   ! Gauss-Lobatto-Jacobi points and weights
   double precision, dimension(NGLJ) :: xiglj
   real(kind=CUSTOM_REAL), dimension(NGLJ) :: wxglj
+  !$acc declare create(wxglj)
 
   ! derivatives of GLJ polynomials
   real(kind=CUSTOM_REAL), dimension(NGLJ,NGLJ) :: hprimeBar_xx,hprimeBarwglj_xx
+  !$acc declare create(hprimeBar_xx)
 
   ! Shape functions (and their derivatives) evaluated at the GLJ points
   double precision, dimension(:,:), allocatable :: flagrange_GLJ
@@ -289,9 +308,11 @@ module specfem_par
   !---------------------------------------------------------------------
   ! for LDDRK46
   integer :: i_stage,stage_time_scheme
+  !$acc declare create(i_stage)
 
   ! coefficients of the explicit Newmark time scheme
   double precision :: deltat,deltatover2,deltatsquareover2
+  !$acc declare create(deltat)
 
   ! for backward simulation in adjoint inversion
   double precision :: b_deltatover2,b_deltatsquareover2,b_deltat ! coefficients of the explicit Newmark time scheme
@@ -311,6 +332,7 @@ module specfem_par
   ! global variable shared by acoustic/elastic/poroelastic simulation
   !---------------------------------------------------------------------
   double precision, dimension(:,:), allocatable :: coord
+  !$acc declare create(coord)
   double precision, dimension(:,:), allocatable :: coorg
 
   !---------------------------------------------------------------------
@@ -356,12 +378,16 @@ module specfem_par
 
   ! the variable for PML
   real(kind=CUSTOM_REAL), dimension(:,:,:,:), allocatable :: rmemory_potential_acoustic
+  !$acc declare create(rmemory_potential_acoustic)
   real(kind=CUSTOM_REAL), dimension(:,:,:,:), allocatable :: &
                           rmemory_acoustic_dux_dx,rmemory_acoustic_dux_dz
+  !$acc declare create(rmemory_acoustic_dux_dx, rmemory_acoustic_dux_dz)
 
   real(kind=CUSTOM_REAL), dimension(:,:,:,:), allocatable :: rmemory_potential_acoustic_LDDRK
+  !$acc declare create(rmemory_potential_acoustic_LDDRK)
   real(kind=CUSTOM_REAL), dimension(:,:,:,:), allocatable :: &
                           rmemory_acoustic_dux_dx_LDDRK,rmemory_acoustic_dux_dz_LDDRK
+  !$acc declare create(rmemory_acoustic_dux_dx_lddrk, rmemory_acoustic_dux_dz_lddrk)
 
   ! for backward simulation in adjoint inversion
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: &

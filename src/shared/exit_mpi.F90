@@ -36,6 +36,7 @@
 !------------------------------------------------------------
 
   subroutine exit_MPI(myrank,error_msg)
+!$acc routine seq
 
 #ifdef USE_MPI
   use mpi
@@ -48,9 +49,12 @@
   integer, parameter :: IERROR = 30
 
   integer :: myrank
+
   character(len=*) :: error_msg
 
   character(len=MAX_STRING_LEN) :: outputname
+
+#ifdef USE_MPI
 
   ! write error message to screen
   write(*,*) error_msg(1:len(error_msg))
@@ -67,6 +71,7 @@
   if (myrank == 0 .and. IMAIN /= ISTANDARD_OUTPUT) close(IMAIN)
 
   call abort_mpi()
+#endif
 
   end subroutine exit_MPI
 
@@ -75,6 +80,7 @@
 ! alias for exit_MPI, useful to convert stop statements to this automatically in the code cleaning script ran by Buildbot
 
   subroutine stop_the_code(error_msg)
+!$acc routine seq
 
   use shared_parameters, only: myrank
 
@@ -82,7 +88,9 @@
 
   character(len=*) :: error_msg
 
+#ifdef USE_MPI
   call exit_MPI(myrank,error_msg)
+#endif
 
   end subroutine stop_the_code
 

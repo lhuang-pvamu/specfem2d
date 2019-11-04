@@ -95,6 +95,9 @@
   integer :: num_elements,ispec_p
 
   integer :: i_sls
+  !$acc routine(mxm_2comp_singleA) seq
+  !$acc routine(pml_compute_memory_variables_acoustic) seq
+  !$acc routine(pml_compute_accel_contribution_acoustic) seq
 
   ! choses inner/outer elements
   if (iphase == 1) then
@@ -104,6 +107,7 @@
   endif
 
   ! loop over spectral elements
+  !$acc kernels
   do ispec_p = 1,num_elements
 
     ! returns element id from stored element list
@@ -158,7 +162,6 @@
     endif
 
     ! gets derivatives of ux and uz with respect to x and z
-    ! possible acc 
     do j = 1,NGLLZ
       do i = 1,NGLLX
         xixl = deriv(1,i,j)
@@ -330,7 +333,7 @@
     else
       ! default case
       if (.not. ATTENUATION_VISCOACOUSTIC) then
-        !$acc parallel loop
+        ! largest inner loop for acc parallel loop
         do j = 1,NGLLZ
           do i = 1,NGLLX
             iglob = ibool(i,j,ispec)
@@ -437,12 +440,14 @@
 !! DK DK QUENTIN visco end
 
   enddo ! end of loop over all spectral elements
+  !$acc end kernels
 
   contains
 
 !---------------------------------------------------------------------------------------
 
   subroutine mxm_2comp_singleA(x,z,A,B,C)
+!$acc routine seq
 
 ! matrix x matrix multiplication, merging 2 loops for x = A^t B^t and z = A C^t
 !

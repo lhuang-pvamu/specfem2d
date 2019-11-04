@@ -44,6 +44,7 @@ module constants
   ! create a copy of the original output file path, to which we may add a "run0001/", "run0002/", "run0003/" prefix later
   ! if NUMBER_OF_SIMULTANEOUS_RUNS > 1
   character(len=MAX_STRING_LEN) :: OUTPUT_FILES = OUTPUT_FILES_BASE
+  !$acc declare create(OUTPUT_FILES)
 
   ! if doing simultaneous runs for the same mesh and model, see who should read the mesh and the model and broadcast it to others
   ! we put a default value here
@@ -113,9 +114,11 @@ module shared_input_parameters
   ! 2 = LDDRK4-6 (4th-order 6-stage low storage Runge-Kutta),
   ! 3 = classical 4th-order 4-stage Runge-Kutta
   integer :: time_stepping_scheme
+  !$acc declare create(time_stepping_scheme)
 
   ! simulation
   logical :: AXISYM
+  !$acc declare create(AXISYM)
 
   logical :: P_SV
 
@@ -374,6 +377,7 @@ module shared_parameters
 
   ! for MPI and partitioning
   integer :: myrank
+  !$acc declare create(myrank)
 
   ! for Bielak condition
   logical :: add_Bielak_conditions
