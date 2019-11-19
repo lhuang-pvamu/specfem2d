@@ -40,7 +40,7 @@
 
 
   subroutine pml_compute_memory_variables_acoustic(ispec,nglob,potential_acoustic_old,dux_dxl,dux_dzl)
-!$acc routine seq
+!acc routine seq
 
 ! for acoustic elements
 
@@ -84,8 +84,8 @@
   double precision :: bb_xz_1,bb_xz_2
   double precision :: coef0_xz_1,coef1_xz_1,coef2_xz_1,coef0_xz_2,coef1_xz_2,coef2_xz_2
 
-  !$acc routine(lik_parameter_computation) seq
-  !$acc routine(stop_the_code) seq
+  !acc routine(lik_parameter_computation) seq
+  !acc routine(stop_the_code) seq
 
   ! checks if anything to do in this slice
   if (nspec_PML == 0) return

@@ -95,9 +95,9 @@
   integer :: num_elements,ispec_p
 
   integer :: i_sls
-  !$acc routine(mxm_2comp_singleA) seq
-  !$acc routine(pml_compute_memory_variables_acoustic) seq
-  !$acc routine(pml_compute_accel_contribution_acoustic) seq
+  !acc routine(mxm_2comp_singleA) seq
+  !acc routine(pml_compute_memory_variables_acoustic) seq
+  !acc routine(pml_compute_accel_contribution_acoustic) seq
 
   ! choses inner/outer elements
   if (iphase == 1) then
@@ -107,7 +107,7 @@
   endif
 
   ! loop over spectral elements
-  !$acc kernels
+  !acc parallel loop
   do ispec_p = 1,num_elements
 
     ! returns element id from stored element list
@@ -118,6 +118,9 @@
 
     ! gets local potential for element
     rhol = density(1,kmato(ispec))
+
+!$acc kernels
+!$acc loop independent collapse(2)
     do j = 1,NGLLZ
       do i = 1,NGLLX
         iglob = ibool(i,j,ispec)
@@ -142,6 +145,7 @@
 
       enddo
     enddo
+  !$acc end kernels
 
     ! first double loop over GLL points to compute and store gradients
     call mxm_2comp_singleA(dux_dxi,dux_dgamma,potential_elem,hprime_xx,hprime_zz)
@@ -149,19 +153,25 @@
     ! AXISYM case overwrites dux_dxi
     if (AXISYM) then
       if (is_on_the_axis(ispec)) then
+!$acc kernels
+!$acc loop independent collapse(2)
         do j = 1,NGLLZ
           do i = 1,NGLLX
             ! derivative along x and along z
             dux_dxi(i,j) = 0._CUSTOM_REAL
+            !Complex loop carried dependence of dux_dxi prevents parallelization
             do k = 1,NGLLX
               dux_dxi(i,j) = dux_dxi(i,j) + potential_elem(k,j) * hprimeBar_xx(i,k)
             enddo
           enddo
         enddo
+  !$acc end kernels
       endif
     endif
 
     ! gets derivatives of ux and uz with respect to x and z
+!$acc kernels
+!$acc loop independent collapse(2)
     do j = 1,NGLLZ
       do i = 1,NGLLX
         xixl = deriv(1,i,j)
@@ -174,6 +184,7 @@
         dux_dzl(i,j) = dux_dxi(i,j) * xizl + dux_dgamma(i,j) * gammazl
       enddo
     enddo
+  !$acc end kernels
 
     ! AXISYM case overwrite dux_dxl
     if (AXISYM) then
@@ -195,6 +206,8 @@
     if (AXISYM) then
       ! AXISYM case
       if (is_on_the_axis(ispec)) then
+!$acc kernels
+!$acc loop independent collapse(2)
         do j = 1,NGLLZ
           do i = 1,NGLLX
             xixl = deriv(1,i,j)
@@ -215,7 +228,10 @@
             tempx2(i,j) = r_xiplus1(i,j) * fac * (gammaxl * dux_dxl(i,j) + gammazl * dux_dzl(i,j))
           enddo
         enddo
+  !$acc end kernels
       else
+!$acc kernels
+!$acc loop independent collapse(2)
         do j = 1,NGLLZ
           do i = 1,NGLLX
             xixl = deriv(1,i,j)
@@ -229,10 +245,13 @@
             tempx2(i,j) = coord(1,ibool(i,j,ispec)) * fac * (gammaxl * dux_dxl(i,j) + gammazl * dux_dzl(i,j))
           enddo
         enddo
+!$acc end kernels
       endif
     else
       ! default case
       ! possible ACC
+!$acc kernels
+!$acc loop independent collapse(2)
       do j = 1,NGLLZ
         do i = 1,NGLLX
           xixl = deriv(1,i,j)
@@ -246,6 +265,7 @@
           tempx2(i,j) = fac * (gammaxl * dux_dxl(i,j) + gammazl * dux_dzl(i,j))
         enddo
       enddo
+!$acc end kernels
     endif
 
     ! first double loop over GLL points to compute and store gradients
@@ -264,10 +284,13 @@
 
       tempx3    = 0._CUSTOM_REAL
       tempx3_e1 = 0._CUSTOM_REAL
+!$acc kernels
+!$acc loop independent collapse(2)
       do j = 1,NGLLZ
         do i = 1,NGLLX
           iglob = ibool(i,j,ispec)
           ! loop on all the standard linear solids
+          ! Complex loop carried dependence of tempx3 prevents parallelization
           do i_sls = 1,N_SLS
             tempx3(i,j) = tempx3(i,j) + e1_acous(iglob,i_sls)
           enddo
@@ -275,6 +298,7 @@
           tempx3(i,j) = jacobian(i,j,ispec)  * tempx3(i,j)
         enddo
       enddo
+!$acc end kernels
 
     endif
 !! DK DK QUENTIN visco end
@@ -288,6 +312,8 @@
     if (AXISYM) then
       ! axisymmetric case
       if (is_on_the_axis(ispec)) then
+!$acc kernels
+!$acc loop independent collapse(2)
         do j = 1,NGLLZ
           do i = 1,NGLLX
             iglob = ibool(i,j,ispec)
@@ -308,6 +334,7 @@
             endif
           enddo
         enddo
+!$acc end kernels
       else
         do j = 1,NGLLZ
           do i = 1,NGLLX
@@ -333,7 +360,9 @@
     else
       ! default case
       if (.not. ATTENUATION_VISCOACOUSTIC) then
-        ! largest inner loop for acc parallel loop
+!acc parallel loop copyin(ibool, hprimewgll_xx, hprimewgll_zz, wzgll, wxgll, potential_dot_dot_acoustic) copyout(potential_dot_dot_acoustic)
+!$acc kernels
+!$acc loop independent collapse(2)
         do j = 1,NGLLZ
           do i = 1,NGLLX
             iglob = ibool(i,j,ispec)
@@ -351,7 +380,11 @@
             endif
           enddo
         enddo
+  !$acc end kernels
       else
+!acc parallel loop copyin(ibool, hprimewgll_xx, hprimewgll_zz, wzgll, wxgll, potential_dot_dot_acoustic) copyout(potential_dot_dot_acoustic)
+!$acc kernels
+!$acc loop independent collapse(2)
         do j = 1,NGLLZ
           do i = 1,NGLLX
             iglob = ibool(i,j,ispec)
@@ -377,12 +410,15 @@
             endif
           enddo
         enddo
+  !$acc end kernels
       endif
     endif
 
     ! PML contribution
     if (PML_BOUNDARY_CONDITIONS) then
       if (ispec_is_PML(ispec)) then
+!$acc kernels
+!$acc loop independent collapse(2)
         do j = 1,NGLLZ
           do i = 1,NGLLX
             iglob = ibool(i,j,ispec)
@@ -391,6 +427,7 @@
             endif
           enddo
         enddo
+  !$acc end kernels
       endif
     endif
 
@@ -399,6 +436,8 @@
       if (AXISYM) then
         ! axisymmetric case
         if (is_on_the_axis(ispec)) then
+!$acc kernels
+!$acc loop independent collapse(2)
           do j = 1,NGLLZ
             do i = 1,NGLLX
               ! sums contributions from each element to the global values
@@ -410,7 +449,10 @@
               endif
             enddo
           enddo
+!$acc end kernels
         else
+!$acc kernels
+!$acc loop independent collapse(2)
           do j = 1,NGLLZ
             do i = 1,NGLLX
               ! sums contributions from each element to the global values
@@ -422,8 +464,11 @@
               endif
             enddo
           enddo
+!$acc end kernels
         endif
       else
+!$acc kernels
+!$acc loop independent collapse(2)
         do j = 1,NGLLZ
           do i = 1,NGLLX
             ! sums contributions from each element to the global values
@@ -435,19 +480,20 @@
             endif
           enddo
         enddo
+!$acc end kernels
       endif
     endif
 !! DK DK QUENTIN visco end
 
   enddo ! end of loop over all spectral elements
-  !$acc end kernels
+  !acc end kernels
 
   contains
 
 !---------------------------------------------------------------------------------------
 
   subroutine mxm_2comp_singleA(x,z,A,B,C)
-!$acc routine seq
+!acc routine seq
 
 ! matrix x matrix multiplication, merging 2 loops for x = A^t B^t and z = A C^t
 !
@@ -485,6 +531,9 @@
 
   select case(NGLLX)
   case (5)
+      !acc loop vectorize collapse 2
+!$acc kernels
+!$acc loop independent collapse(2)
     do j = 1,5
       do i = 1,5
         ! loop unrolling
@@ -492,8 +541,11 @@
         z(i,j) = A(i,1) * C(j,1) + A(i,2) * C(j,2) + A(i,3) * C(j,3) + A(i,4) * C(j,4) + A(i,5) * C(j,5)
       enddo
     enddo
+  !$acc end kernels
 
   case default
+!$acc kernels
+!$acc loop independent collapse(2)
     do j = 1,NGLLZ
       do i = 1,NGLLX
         x(i,j) = 0._CUSTOM_REAL
@@ -504,6 +556,7 @@
         enddo
       enddo
     enddo
+  !$acc end kernels
   end select
 
   end subroutine mxm_2comp_singleA
