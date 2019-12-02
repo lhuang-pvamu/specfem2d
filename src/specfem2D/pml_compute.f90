@@ -32,7 +32,7 @@
 !========================================================================
 
   subroutine compute_coef_convolution(bb,deltat,coef0,coef1,coef2)
-!acc routine seq
+!$acc routine seq
 
   ! compute coefficient used in second-order convolution scheme, from
   ! second-order accurate convolution term calculation from equation (21) of
@@ -65,7 +65,7 @@
                                        CPML_region_local,index_ik,A_0,A_1,A_2,bb_1,bb_2, &
                                        coef0_1,coef1_1,coef2_1,coef0_2,coef1_2,coef2_2)
 
-!acc routine seq
+!$acc routine seq
   use constants, only: CPML_X_ONLY,CPML_Z_ONLY,CPML_XZ,CUSTOM_REAL
 
   implicit none
@@ -83,8 +83,8 @@
 
   logical,parameter :: FIRST_ORDER_CONVOLUTION = .false.
 
-  !acc routine(stop_the_code) seq
-  !acc routine(compute_coef_convolution) seq
+!$acc routine(stop_the_code) seq
+!$acc routine(compute_coef_convolution) seq
 
   if (index_ik == 13) then
     CPML_X_ONLY_TEMP = CPML_X_ONLY
@@ -260,7 +260,7 @@
   subroutine l_parameter_computation(deltat,kappa_x,beta_x,alpha_x,kappa_z,beta_z,alpha_z, &
                                      CPML_region_local,A_0,A_1,A_2,A_3,A_4, &
                                      bb_1,coef0_1,coef1_1,coef2_1,bb_2,coef0_2,coef1_2,coef2_2)
-!acc routine seq
+!$acc routine seq
   use constants, only: CPML_X_ONLY,CPML_Z_ONLY,CPML_XZ,CUSTOM_REAL
 
   implicit none
@@ -275,7 +275,7 @@
   ! local variables
   double precision :: bar_A_0, bar_A_1, bar_A_2, bar_A_3, bar_A_4,gamma_x,gamma_z
 
-  !acc routine(compute_coef_convolution) seq
+!$acc routine(compute_coef_convolution) seq
 
   if (CPML_region_local == CPML_XZ) then
     bar_A_0 = kappa_x * kappa_z

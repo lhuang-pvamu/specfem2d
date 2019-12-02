@@ -42,7 +42,7 @@
   subroutine pml_compute_accel_contribution_acoustic(ispec,nglob, &
                                                      potential_acoustic,potential_acoustic_old,potential_dot_acoustic, &
                                                      potential_dot_dot_acoustic_PML,r_xiplus1)
-!acc routine seq
+!$acc routine seq 
 ! for acoustic elements
 
   use constants, only: CUSTOM_REAL,NGLLX,NGLLZ,CPML_X_ONLY,CPML_Z_ONLY,ALPHA_LDDRK,BETA_LDDRK,C_LDDRK, &
@@ -82,8 +82,8 @@
   real(kind=CUSTOM_REAL) :: mul_relaxed,lambdal_relaxed,kappal,cpl,rhol
   real(kind=CUSTOM_REAL) :: fac
 
-!acc routine(l_parameter_computation) seq
-!acc routine(stop_the_code) seq
+!$acc routine(l_parameter_computation) seq
+!$acc routine(stop_the_code) seq
 
   ! checks if anything to do in this slice
   if (nspec_PML == 0) return
